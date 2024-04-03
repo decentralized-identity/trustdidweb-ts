@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": {
     "server": "bun --watch ./src/resolver.ts",
-    "genKeys": "node src/gen-keys.js",
-    "test": "bun test --watch",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
     "test:bail": "bun test --watch --bail",
     "test:log": "LOG_RESOLVES=true bun test &> ./test/logs/test-run.log"
   },
