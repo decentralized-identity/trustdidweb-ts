@@ -4,36 +4,36 @@
     "https://w3id.org/security/multikey/v1",
     "https://identity.foundation/linked-vp/contexts/v1"
   ],
-  "id": "did:tdw:example.com:jNQ4MKr87HBoox9iXKjRKt3S",
+  "id": "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
   "controller": [
-    "did:tdw:example.com:jNQ4MKr87HBoox9iXKjRKt3S"
+    "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te"
   ],
   "authentication": [
-    "did:tdw:example.com:jNQ4MKr87HBoox9iXKjRKt3S#5b48Zj6B"
+    "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#5b48Zj6B"
   ],
   "assertionMethod": [
-    "did:tdw:example.com:jNQ4MKr87HBoox9iXKjRKt3S#CpsUrTh3"
+    "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#CpsUrTh3"
   ],
   "verificationMethod": [
     {
-      "id": "did:tdw:example.com:jNQ4MKr87HBoox9iXKjRKt3S#5b48Zj6B",
-      "controller": "did:tdw:example.com:jNQ4MKr87HBoox9iXKjRKt3S",
+      "id": "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#5b48Zj6B",
+      "controller": "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
       "type": "Multikey",
       "publicKeyMultibase": "z6Mkw1KSvGWNAwSwWbcpwPgFARX4vKPa1xvcDMsJ5b48Zj6B"
     },
     {
-      "id": "did:tdw:example.com:jNQ4MKr87HBoox9iXKjRKt3S#CpsUrTh3",
-      "controller": "did:tdw:example.com:jNQ4MKr87HBoox9iXKjRKt3S",
+      "id": "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#CpsUrTh3",
+      "controller": "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
       "type": "Multikey",
       "publicKeyMultibase": "z6MkuocstfAaHsJgRnQgfQdtJiECuWEMDAbQV61aCpsUrTh3"
     }
   ],
   "service": [
     {
-      "id": "did:tdw:jNQ4MKr87HBoox9iXKjRKt3S#whois",
+      "id": "did:tdw:example.com:ke465curdwjzrrp5x5ut92te#whois",
       "type": "LinkedVerifiablePresentation",
       "serviceEndpoint": [
-        "https://example.com/docs/jNQ4MKr87HBoox9iXKjRKt3S/whois.json"
+        "https://example.com/docs/ke465curdwjzrrp5x5ut92te/whois.json"
       ]
     }
   ]
