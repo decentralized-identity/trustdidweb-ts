@@ -90,6 +90,7 @@ export const resolveDID = async (log: DIDLog): Promise<{did: string, doc: any, m
   let versionId = 0;
   let doc: any = {};
   let did = '';
+  let scid = '';
   let created = '';
   let updated = '';
   let previousLogEntryHash = '';
@@ -108,7 +109,7 @@ export const resolveDID = async (log: DIDLog): Promise<{did: string, doc: any, m
     if (versionId === 1) {
       created = entry[2];
       newDoc = entry[4].value;
-      const {scid} = entry[3];
+      scid = entry[3].scid;
       const {logEntryHash} = await deriveHash(
         JSON.parse(JSON.stringify(newDoc).replaceAll(scid, PLACEHOLDER))
       );
@@ -146,7 +147,7 @@ export const resolveDID = async (log: DIDLog): Promise<{did: string, doc: any, m
     doc = clone(newDoc);
     did = doc.id;
   }
-  return {did, doc, meta: {versionId, created, updated, previousLogEntryHash}}
+  return {did, doc, meta: {versionId, created, updated, previousLogEntryHash, scid}}
 }
 
 export const updateDID = async (options: UpdateDIDInterface): Promise<{did: string, doc: any, meta: any, log: DIDLog}> => {
