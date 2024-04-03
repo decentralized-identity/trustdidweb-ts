@@ -1,0 +1,1 @@
+export { resolveDID, createDID, updateDID } from './method';

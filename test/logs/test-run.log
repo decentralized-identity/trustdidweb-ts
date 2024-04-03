@@ -1,0 +1,224 @@
+bun test v1.0.35 (940448d6)
+
+test/not-so-happy-path.test.ts:
+(pass) Update with wrong key fails resolution [25.90ms]
+
+test/happy-path.test.ts:
+(pass) Create DID (2 keys + domain) [2.88ms]
+Resolved DID Document: 1 did:tdw:example.com:ke465curdwjzrrp5x5ut92te {
+  "@context": [ "https://www.w3.org/ns/did/v1", "https://w3id.org/security/multikey/v1"
+  ],
+  id: "did:tdw:example.com:ke465curdwjzrrp5x5ut92te",
+  controller: "did:tdw:example.com:ke465curdwjzrrp5x5ut92te",
+  authentication: [ "did:tdw:example.com:ke465curdwjzrrp5x5ut92te#FFhXVfsx" ],
+  assertionMethod: [ "did:tdw:example.com:ke465curdwjzrrp5x5ut92te#CPixwJ8x" ],
+  verificationMethod: [
+    {
+      id: "did:tdw:example.com:ke465curdwjzrrp5x5ut92te#FFhXVfsx",
+      controller: "did:tdw:example.com:ke465curdwjzrrp5x5ut92te",
+      type: "Multikey",
+      publicKeyMultibase: "z6MkkXKMSiE7mXvGcR2KUpeJXwT7MPXZSBC6HZw9FFhXVfsx",
+    }, {
+      id: "did:tdw:example.com:ke465curdwjzrrp5x5ut92te#CPixwJ8x",
+      controller: "did:tdw:example.com:ke465curdwjzrrp5x5ut92te",
+      type: "Multikey",
+      publicKeyMultibase: "z6Mkg8FdKNRt4NLXm5YSUZVGWzK8vvS3DJByxAqHCPixwJ8x",
+    }
+  ],
+}
+(pass) Resolve DID [2.01ms]
+(pass) Update DID (2 keys, 1 service, change domain) [3.25ms]
+Resolved DID Document: 2 did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te {
+  "@context": [ "https://www.w3.org/ns/did/v1", "https://w3id.org/security/multikey/v1",
+    "https://identity.foundation/linked-vp/contexts/v1"
+  ],
+  id: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+  controller: [ "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te" ],
+  authentication: [ "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#5b48Zj6B"
+  ],
+  assertionMethod: [ "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#CpsUrTh3"
+  ],
+  verificationMethod: [
+    {
+      id: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#5b48Zj6B",
+      controller: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+      type: "Multikey",
+      publicKeyMultibase: "z6Mkw1KSvGWNAwSwWbcpwPgFARX4vKPa1xvcDMsJ5b48Zj6B",
+    }, {
+      id: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#CpsUrTh3",
+      controller: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+      type: "Multikey",
+      publicKeyMultibase: "z6MkuocstfAaHsJgRnQgfQdtJiECuWEMDAbQV61aCpsUrTh3",
+    }
+  ],
+  service: [
+    {
+      id: "did:tdw:example.com:ke465curdwjzrrp5x5ut92te#whois",
+      type: "LinkedVerifiablePresentation",
+      serviceEndpoint: [ "https://example.com/docs/ke465curdwjzrrp5x5ut92te/whois.json"
+      ],
+    }
+  ],
+}
+(pass) Resolve DID [3.00ms]
+(pass) Update DID (3 keys, 2 services) [6.10ms]
+Resolved DID Document: 3 did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te {
+  "@context": [ "https://www.w3.org/ns/did/v1", "https://w3id.org/security/multikey/v1",
+    "https://identity.foundation/linked-vp/contexts/v1", "https://didcomm.org/messaging/v2"
+  ],
+  id: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+  controller: [ "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te" ],
+  authentication: [ "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#gJqvqaYD"
+  ],
+  assertionMethod: [ "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#CZSeAWLE"
+  ],
+  verificationMethod: [
+    {
+      id: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#gJqvqaYD",
+      controller: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+      type: "Multikey",
+      publicKeyMultibase: "z6MksNvDtgMutKMzjezRqj8JbYuCHNjHR5HBaF2ogJqvqaYD",
+    }, {
+      id: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#CZSeAWLE",
+      controller: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+      type: "Multikey",
+      publicKeyMultibase: "z6Mkq7Qoa2LCvLCUiq9W2J9vXH1ooDqSX2ehWGUzCZSeAWLE",
+    }, {
+      id: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#qnYZ6fWH",
+      controller: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+      type: "Multikey",
+      publicKeyMultibase: "z6LSdYjdAE7ZY1Gh5VPAxDJdgbg45Lq6im3N9o6HqnYZ6fWH",
+    }
+  ],
+  service: [
+    {
+      id: "did:tdw:example.com:ke465curdwjzrrp5x5ut92te#whois",
+      type: "LinkedVerifiablePresentation",
+      serviceEndpoint: [ "https://example.com/docs/ke465curdwjzrrp5x5ut92te/whois.json"
+      ],
+    }, {
+      id: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#didcomm",
+      type: "DIDCommMessaging",
+      serviceEndpoint: {
+        uri: "https://example.com/didcomm",
+        accept: [ "didcomm/v2", "didcomm/aip2;env=rfc587" ],
+        routingKeys: [ "did:example:somemediator#somekey" ],
+      },
+    }
+  ],
+  keyAgreement: [ "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#qnYZ6fWH"
+  ],
+}
+(pass) Resolve DID [2.88ms]
+(pass) Update DID (add alsoKnownAs) [6.05ms]
+Resolved DID Document: 4 did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te {
+  "@context": [ "https://www.w3.org/ns/did/v1", "https://w3id.org/security/multikey/v1",
+    "https://identity.foundation/linked-vp/contexts/v1", "https://didcomm.org/messaging/v2"
+  ],
+  id: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+  controller: [ "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te" ],
+  authentication: [ "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#9vYyiXiJ"
+  ],
+  assertionMethod: [ "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#kkHS31Z4"
+  ],
+  verificationMethod: [
+    {
+      id: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#9vYyiXiJ",
+      controller: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+      type: "Multikey",
+      publicKeyMultibase: "z6Mkr2D4ixckmQx8tAVvXEhMuaMhzahxe61qJt7G9vYyiXiJ",
+    }, {
+      id: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#kkHS31Z4",
+      controller: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+      type: "Multikey",
+      publicKeyMultibase: "z6MkjnDzaWSBfQFmzyPvhcaABbEBQiuCBRdyQNq5kkHS31Z4",
+    }, {
+      id: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#CAHUs8cU",
+      controller: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+      type: "Multikey",
+      publicKeyMultibase: "z6LSh1TgaytstJw2EnB8gRTZjJaHRVrUQ9K3SAofCAHUs8cU",
+    }
+  ],
+  service: [
+    {
+      id: "did:tdw:example.com:ke465curdwjzrrp5x5ut92te#whois",
+      type: "LinkedVerifiablePresentation",
+      serviceEndpoint: [ "https://example.com/docs/ke465curdwjzrrp5x5ut92te/whois.json"
+      ],
+    }, {
+      id: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#didcomm",
+      type: "DIDCommMessaging",
+      serviceEndpoint: {
+        uri: "https://example.com/didcomm",
+        accept: [ "didcomm/v2", "didcomm/aip2;env=rfc587" ],
+        routingKeys: [ "did:example:somemediator#somekey" ],
+      },
+    }
+  ],
+  keyAgreement: [ "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#CAHUs8cU"
+  ],
+  alsoKnownAs: [ "did:web:example.com" ],
+}
+(pass) Resolve DID [2.97ms]
+(pass) Update DID (add external controller) [6.83ms]
+Resolved DID Document: 5 did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te {
+  "@context": [ "https://www.w3.org/ns/did/v1", "https://w3id.org/security/multikey/v1",
+    "https://identity.foundation/linked-vp/contexts/v1", "https://didcomm.org/messaging/v2"
+  ],
+  id: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+  controller: [ "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te", "did:key:z6MkhoA3GQu8Sek1GFrMpmZNFxy2fSXVzzMggdndDuAWQAnf"
+  ],
+  authentication: [ "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#4jDJpwPh",
+    "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#DuAWQAnf"
+  ],
+  assertionMethod: [ "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#BgxQ25XL"
+  ],
+  verificationMethod: [
+    {
+      id: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#4jDJpwPh",
+      controller: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+      type: "Multikey",
+      publicKeyMultibase: "z6MkkmrDWT9n8rmAVfEvuyBFroc6RFNffAoycrLw4jDJpwPh",
+    }, {
+      id: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#DuAWQAnf",
+      controller: "did:key:z6MkhoA3GQu8Sek1GFrMpmZNFxy2fSXVzzMggdndDuAWQAnf",
+      type: "Multikey",
+      publicKeyMultibase: "z6MkhoA3GQu8Sek1GFrMpmZNFxy2fSXVzzMggdndDuAWQAnf",
+    }, {
+      id: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#BgxQ25XL",
+      controller: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+      type: "Multikey",
+      publicKeyMultibase: "z6MkhGC8KFeSQq8y7Jt2wUgyyTgwJAbMt16gKEwCBgxQ25XL",
+    }, {
+      id: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#p5GH9pb7",
+      controller: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+      type: "Multikey",
+      publicKeyMultibase: "z6LSrrmqwqyj27zSwHqzhEDbiYk3JbhHyzmnDPD4p5GH9pb7",
+    }
+  ],
+  service: [
+    {
+      id: "did:tdw:example.com:ke465curdwjzrrp5x5ut92te#whois",
+      type: "LinkedVerifiablePresentation",
+      serviceEndpoint: [ "https://example.com/docs/ke465curdwjzrrp5x5ut92te/whois.json"
+      ],
+    }, {
+      id: "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#didcomm",
+      type: "DIDCommMessaging",
+      serviceEndpoint: {
+        uri: "https://example.com/didcomm",
+        accept: [ "didcomm/v2", "didcomm/aip2;env=rfc587" ],
+        routingKeys: [ "did:example:somemediator#somekey" ],
+      },
+    }
+  ],
+  keyAgreement: [ "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#p5GH9pb7"
+  ],
+  alsoKnownAs: [ "did:web:example.com" ],
+}
+(pass) Resolve DID [5.24ms]
+
+ 11 pass
+ 0 fail
+ 47 expect() calls
+Ran 11 tests across 2 files. [233.00ms]

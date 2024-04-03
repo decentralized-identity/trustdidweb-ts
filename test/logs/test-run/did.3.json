@@ -1,0 +1,64 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1",
+    "https://w3id.org/security/multikey/v1",
+    "https://identity.foundation/linked-vp/contexts/v1",
+    "https://didcomm.org/messaging/v2"
+  ],
+  "id": "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+  "controller": [
+    "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te"
+  ],
+  "authentication": [
+    "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#gJqvqaYD"
+  ],
+  "assertionMethod": [
+    "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#CZSeAWLE"
+  ],
+  "keyAgreement": [
+    "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#qnYZ6fWH"
+  ],
+  "verificationMethod": [
+    {
+      "id": "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#gJqvqaYD",
+      "controller": "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+      "type": "Multikey",
+      "publicKeyMultibase": "z6MksNvDtgMutKMzjezRqj8JbYuCHNjHR5HBaF2ogJqvqaYD"
+    },
+    {
+      "id": "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#CZSeAWLE",
+      "controller": "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+      "type": "Multikey",
+      "publicKeyMultibase": "z6Mkq7Qoa2LCvLCUiq9W2J9vXH1ooDqSX2ehWGUzCZSeAWLE"
+    },
+    {
+      "id": "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#qnYZ6fWH",
+      "controller": "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+      "type": "Multikey",
+      "publicKeyMultibase": "z6LSdYjdAE7ZY1Gh5VPAxDJdgbg45Lq6im3N9o6HqnYZ6fWH"
+    }
+  ],
+  "service": [
+    {
+      "id": "did:tdw:example.com:ke465curdwjzrrp5x5ut92te#whois",
+      "type": "LinkedVerifiablePresentation",
+      "serviceEndpoint": [
+        "https://example.com/docs/ke465curdwjzrrp5x5ut92te/whois.json"
+      ]
+    },
+    {
+      "id": "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#didcomm",
+      "type": "DIDCommMessaging",
+      "serviceEndpoint": {
+        "uri": "https://example.com/didcomm",
+        "accept": [
+          "didcomm/v2",
+          "didcomm/aip2;env=rfc587"
+        ],
+        "routingKeys": [
+          "did:example:somemediator#somekey"
+        ]
+      }
+    }
+  ]
+}
