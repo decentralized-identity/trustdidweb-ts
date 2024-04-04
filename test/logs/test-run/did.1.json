@@ -3,26 +3,26 @@
     "https://www.w3.org/ns/did/v1",
     "https://w3id.org/security/multikey/v1"
   ],
-  "id": "did:tdw:example.com:ke465curdwjzrrp5x5ut92te",
-  "controller": "did:tdw:example.com:ke465curdwjzrrp5x5ut92te",
+  "id": "did:tdw:example.com:en6dfezxz8yvudnyb5pq9a6g",
+  "controller": "did:tdw:example.com:en6dfezxz8yvudnyb5pq9a6g",
   "authentication": [
-    "did:tdw:example.com:ke465curdwjzrrp5x5ut92te#FFhXVfsx"
+    "did:tdw:example.com:en6dfezxz8yvudnyb5pq9a6g#5b48Zj6B"
   ],
   "assertionMethod": [
-    "did:tdw:example.com:ke465curdwjzrrp5x5ut92te#CPixwJ8x"
+    "did:tdw:example.com:en6dfezxz8yvudnyb5pq9a6g#CpsUrTh3"
   ],
   "verificationMethod": [
     {
-      "id": "did:tdw:example.com:ke465curdwjzrrp5x5ut92te#FFhXVfsx",
-      "controller": "did:tdw:example.com:ke465curdwjzrrp5x5ut92te",
+      "id": "did:tdw:example.com:en6dfezxz8yvudnyb5pq9a6g#5b48Zj6B",
+      "controller": "did:tdw:example.com:en6dfezxz8yvudnyb5pq9a6g",
       "type": "Multikey",
-      "publicKeyMultibase": "z6MkkXKMSiE7mXvGcR2KUpeJXwT7MPXZSBC6HZw9FFhXVfsx"
+      "publicKeyMultibase": "z6Mkw1KSvGWNAwSwWbcpwPgFARX4vKPa1xvcDMsJ5b48Zj6B"
     },
     {
-      "id": "did:tdw:example.com:ke465curdwjzrrp5x5ut92te#CPixwJ8x",
-      "controller": "did:tdw:example.com:ke465curdwjzrrp5x5ut92te",
+      "id": "did:tdw:example.com:en6dfezxz8yvudnyb5pq9a6g#CpsUrTh3",
+      "controller": "did:tdw:example.com:en6dfezxz8yvudnyb5pq9a6g",
       "type": "Multikey",
-      "publicKeyMultibase": "z6Mkg8FdKNRt4NLXm5YSUZVGWzK8vvS3DJByxAqHCPixwJ8x"
+      "publicKeyMultibase": "z6MkuocstfAaHsJgRnQgfQdtJiECuWEMDAbQV61aCpsUrTh3"
     }
   ]
 }

@@ -35,7 +35,7 @@ interface ServiceEndpoint {
 
 interface VerificationMethod {
   id?: string;
-  type: string;
+  type: 'authentication' | 'assertionMethod' | 'keyAgreement' | 'capabilityInvocation' | 'capabilityDelegation';
   controller?: string;
   publicKeyJWK?: any;
   publicKeyMultibase?: string;
@@ -48,6 +48,7 @@ interface CreateDIDInterface {
   controller?: string;
   context?: string | string[];
   VMs?: VerificationMethod[];
+  created?: Date;
 }
 
 interface SignDIDDocInterface {
@@ -65,4 +66,5 @@ interface UpdateDIDInterface {
   services?: ServiceEndpoint[];
   alsoKnownAs?: string[];
   domain?: string;
+  created?: Date
 }

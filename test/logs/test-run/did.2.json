@@ -4,36 +4,36 @@
     "https://w3id.org/security/multikey/v1",
     "https://identity.foundation/linked-vp/contexts/v1"
   ],
-  "id": "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+  "id": "did:tdw:migrated.example.com:en6dfezxz8yvudnyb5pq9a6g",
   "controller": [
-    "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te"
+    "did:tdw:migrated.example.com:en6dfezxz8yvudnyb5pq9a6g"
   ],
   "authentication": [
-    "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#5b48Zj6B"
+    "did:tdw:migrated.example.com:en6dfezxz8yvudnyb5pq9a6g#gJqvqaYD"
   ],
   "assertionMethod": [
-    "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#CpsUrTh3"
+    "did:tdw:migrated.example.com:en6dfezxz8yvudnyb5pq9a6g#CZSeAWLE"
   ],
   "verificationMethod": [
     {
-      "id": "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#5b48Zj6B",
-      "controller": "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+      "id": "did:tdw:migrated.example.com:en6dfezxz8yvudnyb5pq9a6g#gJqvqaYD",
+      "controller": "did:tdw:migrated.example.com:en6dfezxz8yvudnyb5pq9a6g",
       "type": "Multikey",
-      "publicKeyMultibase": "z6Mkw1KSvGWNAwSwWbcpwPgFARX4vKPa1xvcDMsJ5b48Zj6B"
+      "publicKeyMultibase": "z6MksNvDtgMutKMzjezRqj8JbYuCHNjHR5HBaF2ogJqvqaYD"
     },
     {
-      "id": "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te#CpsUrTh3",
-      "controller": "did:tdw:migrated.example.com:ke465curdwjzrrp5x5ut92te",
+      "id": "did:tdw:migrated.example.com:en6dfezxz8yvudnyb5pq9a6g#CZSeAWLE",
+      "controller": "did:tdw:migrated.example.com:en6dfezxz8yvudnyb5pq9a6g",
       "type": "Multikey",
-      "publicKeyMultibase": "z6MkuocstfAaHsJgRnQgfQdtJiECuWEMDAbQV61aCpsUrTh3"
+      "publicKeyMultibase": "z6Mkq7Qoa2LCvLCUiq9W2J9vXH1ooDqSX2ehWGUzCZSeAWLE"
     }
   ],
   "service": [
     {
-      "id": "did:tdw:example.com:ke465curdwjzrrp5x5ut92te#whois",
+      "id": "did:tdw:example.com:en6dfezxz8yvudnyb5pq9a6g#whois",
       "type": "LinkedVerifiablePresentation",
       "serviceEndpoint": [
-        "https://example.com/docs/ke465curdwjzrrp5x5ut92te/whois.json"
+        "https://example.com/docs/en6dfezxz8yvudnyb5pq9a6g/whois.json"
       ]
     }
   ]
