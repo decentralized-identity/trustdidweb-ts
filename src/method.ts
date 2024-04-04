@@ -38,7 +38,7 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
   const logEntry: DIDLogEntry = [
     genesisDocHash,
     1,
-    (new Date).toISOString().slice(0,-5)+'Z',
+    new Date(options.created ?? Date.now()).toISOString().slice(0,-5)+'Z',
     {method: PROTOCOL, scid},
     {value: doc}
   ]
@@ -81,7 +81,7 @@ export const createDIDDoc = async (options: CreateDIDInterface): Promise<{doc: D
   };
 }
 
-export const resolveDID = async (log: DIDLog): Promise<{did: string, doc: any, meta: any}> => {
+export const resolveDID = async (log: DIDLog, options: {versionId?: number, versionTime?: Date} = {}): Promise<{did: string, doc: any, meta: any}> => {
   const resolutionLog = clone(log);
   const protocol = resolutionLog[0][3].method;
   if(protocol !== PROTOCOL) {
@@ -94,6 +94,7 @@ export const resolveDID = async (log: DIDLog): Promise<{did: string, doc: any, m
   let created = '';
   let updated = '';
   let previousLogEntryHash = '';
+  let i = 0;
   for (const entry of resolutionLog) {
     if (entry[1] !== versionId + 1) {
       throw new Error(`versionId '${entry[1]}' in log doesn't match expected '${versionId}'.`);
@@ -146,6 +147,20 @@ export const resolveDID = async (log: DIDLog): Promise<{did: string, doc: any, m
     }
     doc = clone(newDoc);
     did = doc.id;
+    if (options.versionId === versionId) {
+      return {did, doc, meta: {versionId, created, updated, previousLogEntryHash, scid}}
+    }
+    if (options.versionTime && options.versionTime > new Date(updated)) {
+      if (resolutionLog[i+1] && options.versionTime < new Date(resolutionLog[i+1][2])) {
+        return {did, doc, meta: {versionId, created, updated, previousLogEntryHash, scid}}
+      } else if(!resolutionLog[i+1]) {
+        return {did, doc, meta: {versionId, created, updated, previousLogEntryHash, scid}}
+      }
+    }
+    i++;
+  }
+  if (options.versionTime || options.versionId) {
+    throw new Error(`DID with options ${JSON.stringify(options)} not found`);
   }
   return {did, doc, meta: {versionId, created, updated, previousLogEntryHash, scid}}
 }
@@ -166,7 +181,7 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
     ...(alsoKnownAs ? {alsoKnownAs} : {})
   }
   meta.versionId++;
-  meta.updated = (new Date).toISOString().slice(0,-5)+'Z';
+  meta.updated = new Date(options.created ?? Date.now()).toISOString().slice(0,-5)+'Z';
   const patch = jsonpatch.compare(doc, newDoc);
   const logEntry = [meta.previousLogEntryHash, meta.versionId, meta.updated, {}, {patch: clone(patch)}];
   const {logEntryHash} = await deriveHash(logEntry);

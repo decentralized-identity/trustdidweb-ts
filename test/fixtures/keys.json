@@ -35,14 +35,6 @@
   ],
   "ed25519": [
     {
-      "publicKeyMultibase": "z6MkkXKMSiE7mXvGcR2KUpeJXwT7MPXZSBC6HZw9FFhXVfsx",
-      "secretKeyMultibase": "zrv2HF6iBmWXPrGAVrbUb2E9XkkiBMPK5chU3nCmNtsMNVJjAz2KTU3vRSdR37UMQ6dXdknK5so9pF2qWMxQfkydCPU"
-    },
-    {
-      "publicKeyMultibase": "z6Mkg8FdKNRt4NLXm5YSUZVGWzK8vvS3DJByxAqHCPixwJ8x",
-      "secretKeyMultibase": "zrv3TbHSQUWZ5ecfeeLgGviuwrjWRmj1m8nLTArF1tGtt59MtyVKKePuKzBXxzVD2Qt2vsyQD1iwgeL2zqDJQwd4cgx"
-    },
-    {
       "publicKeyMultibase": "z6Mkw1KSvGWNAwSwWbcpwPgFARX4vKPa1xvcDMsJ5b48Zj6B",
       "secretKeyMultibase": "zruzhcN866F8BpUX6LDPPAUWdHRi3Jjg5q8yxGGX5KoKfaDe8Pexn45mHsHvqX714Bqt3t3AYKXVat9BPduGwq3NZgf"
     },
@@ -433,6 +425,14 @@
     {
       "publicKeyMultibase": "z6Mki5baCw6WN1k8oCsNwGnGYEW9cMfKbjHHeS3GHFzpxYU3",
       "secretKeyMultibase": "zrv5X1twpVCRah1UCAAxzYE6rd7twtWrUoZUChRiqBKFUbVp2vArHTbz6bnz2kr42cA5zaB7ajov1jhaNtCq2U1qvTm"
+    },
+    {
+      "publicKeyMultibase": "z6MkkXKMSiE7mXvGcR2KUpeJXwT7MPXZSBC6HZw9FFhXVfsx",
+      "secretKeyMultibase": "zrv2HF6iBmWXPrGAVrbUb2E9XkkiBMPK5chU3nCmNtsMNVJjAz2KTU3vRSdR37UMQ6dXdknK5so9pF2qWMxQfkydCPU"
+    },
+    {
+      "publicKeyMultibase": "z6Mkg8FdKNRt4NLXm5YSUZVGWzK8vvS3DJByxAqHCPixwJ8x",
+      "secretKeyMultibase": "zrv3TbHSQUWZ5ecfeeLgGviuwrjWRmj1m8nLTArF1tGtt59MtyVKKePuKzBXxzVD2Qt2vsyQD1iwgeL2zqDJQwd4cgx"
     }
   ]
 }

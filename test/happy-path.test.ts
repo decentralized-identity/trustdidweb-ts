@@ -32,7 +32,7 @@ const writeFilesToDisk = (_log: DIDLog, _doc: any, version: number) => {
 
 const testResolveVersion = async (versionId: number) => {
   const log = readLogFromDisk(logFile);
-  const {did: resolvedDID, doc: resolvedDoc, meta} = await resolveDID(log);
+  const {did: resolvedDID, doc: resolvedDoc, meta} = await resolveDID(log, {versionId: versionId});
 
   if(verboseMode) {
     console.log(`Resolved DID Document: ${versionId}`, resolvedDID, resolvedDoc);
@@ -74,12 +74,12 @@ test("Create DID (2 keys + domain)", async () => {
   writeFilesToDisk(newLog, newDoc, 1);
 });
 
-test("Resolve DID", async () => {
+test("Resolve DID version 1", async () => {
   await testResolveVersion(1);
 });
 
 test("Update DID (2 keys, 1 service, change domain)", async () => {
-  const nextAuthKey = {type: 'authentication', ...availableKeys.ed25519.shift()};
+  const nextAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
   const didLog = readLogFromDisk(logFile);
   const context = ["https://identity.foundation/linked-vp/contexts/v1"];
 
@@ -114,12 +114,12 @@ test("Update DID (2 keys, 1 service, change domain)", async () => {
   currentAuthKey = nextAuthKey;
 });
 
-test("Resolve DID", async () => {
+test("Resolve DID version 2", async () => {
   await testResolveVersion(2);
 });
 
 test("Update DID (3 keys, 2 services)", async () => {
-  const nextAuthKey = {type: 'authentication', ...availableKeys.ed25519.shift()};
+  const nextAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
   const didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
 
@@ -160,12 +160,12 @@ test("Update DID (3 keys, 2 services)", async () => {
   currentAuthKey = nextAuthKey;
 });
 
-test("Resolve DID", async () => {
+test("Resolve DID version 3", async () => {
   await testResolveVersion(3);
 });
 
 test("Update DID (add alsoKnownAs)", async () => {
-  const nextAuthKey = {type: 'authentication', ...availableKeys.ed25519.shift()};
+  const nextAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
   const didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
 
@@ -190,15 +190,15 @@ test("Update DID (add alsoKnownAs)", async () => {
   currentAuthKey = nextAuthKey;
 });
 
-test("Resolve DID", async () => {
+test("Resolve DID version 4", async () => {
   await testResolveVersion(4);
 });
 
 test("Update DID (add external controller)", async () => {
-  const nextAuthKey = {type: 'authentication', ...availableKeys.ed25519.shift()};
+  const nextAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
   const didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
-  const externalAuthKey = {type: 'authentication', ...availableKeys.ed25519.shift()};
+  const externalAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
   externalAuthKey.controller = `did:key:${externalAuthKey.publicKeyMultibase}`;
 
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
@@ -228,6 +228,6 @@ test("Update DID (add external controller)", async () => {
   currentAuthKey = nextAuthKey;
 });
 
-test("Resolve DID", async () => {
+test("Resolve DID version 5", async () => {
   await testResolveVersion(5);
 });
