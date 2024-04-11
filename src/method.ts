@@ -36,7 +36,7 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
   const {scid} = await createSCID(genesisDocHash);
   doc = JSON.parse(JSON.stringify(doc).replaceAll(PLACEHOLDER, scid));
   const logEntry: DIDLogEntry = [
-    genesisDocHash,
+    scid,
     1,
     new Date(options.created ?? Date.now()).toISOString().slice(0,-5)+'Z',
     {method: PROTOCOL, scid},
