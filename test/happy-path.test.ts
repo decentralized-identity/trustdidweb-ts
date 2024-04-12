@@ -12,7 +12,7 @@ const verboseMode = Bun.env['LOG_RESOLVES'] === 'true';
 
 const logFilePath =
   (id: string, version?: number) =>
-    `./test/logs/${id}/did${verboseMode && version ? '.' + version : ''}.log`;
+    `./test/logs/${id}/did${verboseMode && version ? '.' + version : ''}.jsonl`;
 
 const writeFilesToDisk = (_log: DIDLog, _doc: any, version: number) => {
   let id = _doc.id.split(':').at(-1);
@@ -62,7 +62,7 @@ test("Create DID (2 keys + domain)", async () => {
 
   expect(newDID).toContain('example.com');
   expect(newDID.split(':').length).toBe(4);
-  expect(newDID.split(':').at(-1)?.length).toBe(24);
+  expect(newDID.split(':').at(-1)?.length).toBe(28);
   expect(newDoc.verificationMethod.length).toBe(2);
   expect(newDoc.id).toBe(newDID);
   expect(newLog.length).toBe(1);

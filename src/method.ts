@@ -1,26 +1,22 @@
-import { documentLoader, jdl } from "./documentLoader";
+import * as ed from '@noble/ed25519';
 
 import { nanoid } from 'nanoid';
 import * as Ed25519Multikey from '@digitalbazaar/ed25519-multikey';
-import {DataIntegrityProof} from '@digitalbazaar/data-integrity';
 import { canonicalize } from 'json-canonicalize';
 import * as jsonpatch from 'fast-json-patch/index.mjs';
-import {cryptosuite as eddsa2022CryptoSuite} from
-  '@digitalbazaar/eddsa-2022-cryptosuite';
-import jsigs from 'jsonld-signatures';
-import { clone } from "./utils";
+import { clone, createDate } from "./utils";
 import base32 from 'base32';
 import {createHash} from 'node:crypto';
+import { base58btc } from "multiformats/bases/base58"
 
 export const PLACEHOLDER = "{{SCID}}";
 export const METHOD = "tdw";
 export const PROTOCOL = `did:${METHOD}:1`;
 
 const CONTEXT = ["https://www.w3.org/ns/did/v1", "https://w3id.org/security/multikey/v1"];
-const {purposes: {AuthenticationProofPurpose}} = jsigs;
 
 export const createSCID = async (logEntryHash: string): Promise<{scid: string}> => {
-  return {scid: `${logEntryHash.slice(0, 24)}`};
+  return {scid: `${logEntryHash.slice(0, 28)}`};
 }
 
 export const deriveHash = async (input: any): Promise<{logEntryHash: string}> => {
@@ -36,9 +32,9 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
   const {scid} = await createSCID(genesisDocHash);
   doc = JSON.parse(JSON.stringify(doc).replaceAll(PLACEHOLDER, scid));
   const logEntry: DIDLogEntry = [
-    genesisDocHash,
+    scid,
     1,
-    new Date(options.created ?? Date.now()).toISOString().slice(0,-5)+'Z',
+    createDate(options.created),
     {method: PROTOCOL, scid},
     {value: doc}
   ]
@@ -50,7 +46,7 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
   }
   authKey.id = createVMID({...authKey, type: 'authentication'}, doc.id!);
   const signedDoc = await signDocument(doc, {...authKey, type: 'authentication'}, logEntryHash);
-  logEntry.push(signedDoc.proof);
+  logEntry.push([signedDoc.proof]);
   return {
     did: doc.id!,
     doc,
@@ -119,10 +115,10 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
       if (scid !== derivedScid) {
         throw new Error(`SCID '${scid}' not derived from logEntryHash '${logEntryHash}' (scid ${derivedScid})`);
       }
-      const authKey = newDoc.verificationMethod.find((vm: VerificationMethod) => vm.id === entry[5].verificationMethod);
-      const result = await isDocumentStateValid(authKey, {...newDoc, proof: entry[5]}, newDoc);
-      if (!result.verified) {
-        throw new Error(`version ${versionId} failed verification of the proof.`, {cause: result})
+      const authKey = newDoc.verificationMethod.find((vm: VerificationMethod) => vm.id === entry[5][0].verificationMethod);
+      const verified = await isDocumentStateValid(authKey, newDoc, entry[5], newDoc);
+      if (!verified) {
+        throw new Error(`version ${versionId} failed verification of the proof.`)
       }
     } else {
       // versionId > 1
@@ -136,13 +132,13 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
       if (logEntryHash !== entry[0]) {
         throw new Error(`Hash chain broken at '${versionId}'`);
       }
-      const authKey = doc.verificationMethod.find((vm: VerificationMethod) => vm.id === entry[5].verificationMethod);
+      const authKey = doc.verificationMethod.find((vm: VerificationMethod) => vm.id === entry[5][0].verificationMethod);
       if (!authKey) {
         throw new Error(`Auth key '${entry[5].verificationMethod}' not found in previous document`);
       }
-      const result = await isDocumentStateValid(authKey, {...newDoc, proof: entry[5]}, doc);
-      if (!result.verified) {
-        throw new Error(`version ${versionId} failed verification of the proof.`, {cause: {result, currentDoc: doc}})
+      const verified = await isDocumentStateValid(authKey, newDoc, entry[5], doc);
+      if (!verified) {
+        throw new Error(`version ${versionId} failed verification of the proof.`)
       }
     }
     doc = clone(newDoc);
@@ -181,7 +177,7 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
     ...(alsoKnownAs ? {alsoKnownAs} : {})
   }
   meta.versionId++;
-  meta.updated = new Date(options.created ?? Date.now()).toISOString().slice(0,-5)+'Z';
+  meta.updated = createDate(options.created);
   const patch = jsonpatch.compare(doc, newDoc);
   const logEntry = [meta.previousLogEntryHash, meta.versionId, meta.updated, {}, {patch: clone(patch)}];
   const {logEntryHash} = await deriveHash(logEntry);
@@ -201,7 +197,7 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
     },
     log: [
       ...clone(log),
-      [logEntryHash, meta.versionId, meta.updated, {}, {patch: clone(patch)}, signedDoc.proof]
+      [logEntryHash, meta.versionId, meta.updated, {}, {patch: clone(patch)}, [signedDoc.proof]]
     ]
   };
 }
@@ -261,41 +257,66 @@ export const signDocument = async (doc: any, vm: VerificationMethod, challenge: 
       publicKeyMultibase: vm.publicKeyMultibase,
       secretKeyMultibase: vm.secretKeyMultibase
     });
-    const suite = new DataIntegrityProof({
-      signer: keyPair.signer(), cryptosuite: eddsa2022CryptoSuite
-    });
-    
-    const signedDoc = await jsigs.sign(clone(doc), {
-      suite,
-      purpose: new AuthenticationProofPurpose({challenge}),
-      documentLoader
-    });
-    return signedDoc;
+    // const suite = new DataIntegrityProof({
+    //   signer: keyPair.signer(), cryptosuite: eddsa2022CryptoSuite
+    // });
+    const proof: any = {
+      type: 'DataIntegrityProof',
+      cryptosuite: 'eddsa-jcs-2022',
+      verificationMethod: vm.id,
+      created: createDate(),
+      proofPurpose: 'authentication',
+      challenge
+    }
+    const dataHash = createHash('sha256').update(canonicalize(doc)).digest();
+    const proofHash = createHash('sha256').update(canonicalize(proof)).digest();
+    const input = Buffer.concat([dataHash, proofHash]);
+    const secretKey = base58btc.decode(vm.secretKeyMultibase!);
+
+    const output = await ed.signAsync(ed.etc.bytesToHex(input), ed.etc.bytesToHex(secretKey.slice(2, 34)));
+
+    proof.proofValue = base58btc.encode(output);
+    return {...doc, proof};
   } catch (e: any) {
     console.error(e)
     throw new Error(`Document signing failure: ${e.details}`)
   }
 }
 
-export const isDocumentStateValid = async (authKey: VerificationMethod, doc: any, prevDoc: any) => {
+export const isDocumentStateValid = async (authKey: VerificationMethod, doc: any, proofs: any[], prevDoc: any) => {
   if (!isKeyAuthorized(authKey, prevDoc)) {
     throw new Error(`key ${authKey.id} is not authorized to update.`)
   }
-  jdl.addStatic(prevDoc.id, prevDoc);
-  jdl.addStatic(doc.proof.verificationMethod, authKey);
-  const docLoader = jdl.build();
-  const {document: keyPairDoc} = await docLoader(authKey.id);
-  const keyPair = await Ed25519Multikey.from(keyPairDoc);
-  
-  const suite = new DataIntegrityProof({
-    verifier: keyPair.verifier(), cryptosuite: eddsa2022CryptoSuite
-  });
-  const verification = await jsigs.verify(doc, {
-    suite,
-    purpose: new AuthenticationProofPurpose({challenge: doc.proof.challenge}),
-    documentLoader: docLoader
-  });
-  return verification;
+  let i = 0;
+  while(i < proofs.length) {
+    const proof = proofs[i];
+    if (proof.type !== 'DataIntegrityProof') {
+      throw new Error(`Unknown proof type ${proof.type}`);
+    }
+    if (proof.proofPurpose !== 'authentication') {
+      throw new Error(`Unknown proof purpose] ${proof.proofPurpose}`);
+    }
+    if (proof.cryptosuite !== 'eddsa-jcs-2022') {
+      throw new Error(`Unknown cryptosuite ${proof.cryptosuite}`);
+    }
+    const publicKey = base58btc.decode(authKey.publicKeyMultibase!);
+    const {proofValue, ...restProof} = proof;
+    const sig = base58btc.decode(proofValue);
+    const dataHash = createHash('sha256').update(canonicalize(doc)).digest();
+    const proofHash = createHash('sha256').update(canonicalize(restProof)).digest();
+    const input = Buffer.concat([dataHash, proofHash]);
+
+    const verified = await ed.verifyAsync(
+      ed.etc.bytesToHex(sig),
+      ed.etc.bytesToHex(input),
+      ed.etc.bytesToHex(publicKey.slice(2))
+    );
+    if (!verified) {
+      return false;
+    }
+    i++;
+  }
+  return true;
 }
 
 

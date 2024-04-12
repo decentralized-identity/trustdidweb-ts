@@ -7,7 +7,7 @@
     "test": "bun test",
     "test:watch": "bun test --watch",
     "test:bail": "bun test --watch --bail",
-    "test:log": "LOG_RESOLVES=true bun test &> ./test/logs/test-run.log"
+    "test:log": "mkdir -p ./test/logs && LOG_RESOLVES=true bun test &> ./test/logs/test-run.txt"
   },
   "devDependencies": {
     "bun-types": "latest",
@@ -18,23 +18,13 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@digitalbazaar/data-integrity": "^2.1.0",
-    "@digitalbazaar/data-integrity-context": "^2.0.0",
-    "@digitalbazaar/ed25519-multikey": "^1.0.2",
-    "@digitalbazaar/eddsa-2022-cryptosuite": "^1.0.0",
-    "@digitalbazaar/multikey-context": "^2.0.1",
-    "@digitalbazaar/security-context": "^1.0.1",
-    "@digitalbazaar/x25519-key-agreement-key-2020": "^3.0.1",
+    "@digitalbazaar/ed25519-multikey": "^1.1.0",
+    "@noble/ed25519": "^2.1.0",
     "base32": "^0.0.7",
-    "credentials-context": "^2.0.0",
-    "did-context": "^3.1.1",
-    "ed25519-signature-2020-context": "^1.1.0",
     "elysia": "^0.8.17",
     "fast-json-patch": "^3.1.1",
     "json-canonicalize": "^1.0.6",
-    "jsonld": "^8.3.2",
-    "jsonld-document-loader": "^2.0.0",
-    "jsonld-signatures": "^11.2.1",
+    "multiformats": "^13.1.0",
     "nanoid": "^5.0.6"
   }
 }

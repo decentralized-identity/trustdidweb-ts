@@ -17,7 +17,8 @@ beforeAll(async () => {
   const {doc: newDoc1, log: newLog1} = await createDID({
     domain: 'example.com',
     VMs: [authKey1],
-    created: new Date('2021-01-01T08:32:55Z')},);
+    created: new Date('2021-01-01T08:32:55Z')
+  });
 
   const {doc: newDoc2, log: newLog2} = await updateDID({
     log: newLog1,
