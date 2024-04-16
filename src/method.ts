@@ -4,12 +4,12 @@ import { nanoid } from 'nanoid';
 import * as Ed25519Multikey from '@digitalbazaar/ed25519-multikey';
 import { canonicalize } from 'json-canonicalize';
 import * as jsonpatch from 'fast-json-patch/index.mjs';
-import { clone, createDate } from "./utils";
+import { bytesToHex, clone, createDate } from "./utils";
 import base32 from 'base32';
 import {createHash} from 'node:crypto';
 import { base58btc } from "multiformats/bases/base58"
 
-export const PLACEHOLDER = "{{SCID}}";
+export const PLACEHOLDER = "{SCID}";
 export const METHOD = "tdw";
 export const PROTOCOL = `did:${METHOD}:1`;
 
@@ -273,7 +273,7 @@ export const signDocument = async (doc: any, vm: VerificationMethod, challenge: 
     const input = Buffer.concat([dataHash, proofHash]);
     const secretKey = base58btc.decode(vm.secretKeyMultibase!);
 
-    const output = await ed.signAsync(ed.etc.bytesToHex(input), ed.etc.bytesToHex(secretKey.slice(2, 34)));
+    const output = await ed.signAsync(bytesToHex(input), bytesToHex(secretKey.slice(2, 34)));
 
     proof.proofValue = base58btc.encode(output);
     return {...doc, proof};
@@ -307,9 +307,9 @@ export const isDocumentStateValid = async (authKey: VerificationMethod, doc: any
     const input = Buffer.concat([dataHash, proofHash]);
 
     const verified = await ed.verifyAsync(
-      ed.etc.bytesToHex(sig),
-      ed.etc.bytesToHex(input),
-      ed.etc.bytesToHex(publicKey.slice(2))
+      bytesToHex(sig),
+      bytesToHex(input),
+      bytesToHex(publicKey.slice(2))
     );
     if (!verified) {
       return false;
