@@ -8,7 +8,6 @@ export const genKeys = async (count) => {
   while(i < count) {
     // const {publicKeyMultibase, secretKeyMultibase} = await generateEd25519();
     const {publicKeyMultibase, secretKeyMultibase} = await generateEd25519();
-    console.log(base58btc.decode(publicKeyMultibase).length);
     keys.push({publicKeyMultibase, secretKeyMultibase});
     i++;
   }

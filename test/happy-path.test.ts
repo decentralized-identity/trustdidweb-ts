@@ -1,7 +1,10 @@
 import { test, expect, beforeAll } from "bun:test";
-import { createDID, createVMID, METHOD, resolveDID, updateDID } from "../src/method";
+import { createDID, resolveDID, updateDID } from "../src/method";
 import fs from 'node:fs';
+import {generate as generateEd25519} from '@digitalbazaar/ed25519-multikey';
 import { readLogFromDisk, readKeysFromDisk } from "./utils";
+import { createVMID } from "../src/utils";
+import { METHOD } from "../src/constants";
 
 let docFile: string, logFile: string;
 let did: string;
@@ -52,7 +55,7 @@ beforeAll(async () => {
 test("Create DID (2 keys + domain)", async () => {
   const {did: newDID, doc: newDoc, meta, log: newLog} = await createDID({
     domain: 'example.com',
-    VMs: [
+    verificationMethods: [
       currentAuthKey!,
       {type: 'assertionMethod', ...availableKeys.ed25519.shift()},
     ]});
@@ -89,7 +92,7 @@ test("Update DID (2 keys, 1 service, change domain)", async () => {
       authKey: currentAuthKey!,
       context,
       domain: 'migrated.example.com',
-      vms: [
+      verificationMethods: [
         nextAuthKey,
         {type: 'assertionMethod', ...availableKeys.ed25519.shift()},
       ],
@@ -128,7 +131,7 @@ test("Update DID (3 keys, 2 services)", async () => {
       log: didLog,
       authKey: currentAuthKey!,
       context: [...doc['@context'], 'https://didcomm.org/messaging/v2'],
-      vms: [
+      verificationMethods: [
         nextAuthKey,
         {type: 'assertionMethod', ...availableKeys.ed25519.shift()},
         {type: 'keyAgreement', ...availableKeys.x25519.shift()}
@@ -174,7 +177,7 @@ test("Update DID (add alsoKnownAs)", async () => {
       log: didLog,
       authKey: currentAuthKey!,
       context: doc['@context'],
-      vms: [
+      verificationMethods: [
         nextAuthKey,
         {type: 'assertionMethod', ...availableKeys.ed25519.shift()},
         {type: 'keyAgreement', ...availableKeys.x25519.shift()},
@@ -195,37 +198,42 @@ test("Resolve DID version 4", async () => {
 });
 
 test("Update DID (add external controller)", async () => {
-  const nextAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
-  const didLog = readLogFromDisk(logFile);
+  let i = 0;
+  let didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
+  if (availableKeys.ed25519.length === 0) {
+    const {keys} = readKeysFromDisk();
+    availableKeys = JSON.parse(keys);
+  }
+  const {publicKeyMultibase, secretKeyMultibase} = availableKeys.ed25519.shift()!;
+  const nextAuthKey = {type: 'authentication' as const, publicKeyMultibase, secretKeyMultibase};
   const externalAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
   externalAuthKey.controller = `did:key:${externalAuthKey.publicKeyMultibase}`;
-
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
       log: didLog,
       authKey: currentAuthKey!,
+      controller: [doc.controller, externalAuthKey.controller],
       context: doc['@context'],
-      controller: [externalAuthKey.controller],
-      vms: [
+      verificationMethods: [
         nextAuthKey,
-        externalAuthKey,
-        {type: 'assertionMethod', ...availableKeys.ed25519.shift()},
-        {type: 'keyAgreement', ...availableKeys.x25519.shift()},
+        externalAuthKey
       ],
       services: doc.service,
       alsoKnownAs: ['did:web:example.com']
     });
+    didLog = [...updatedLog];
+    expect(updatedDID).toBe(did);
+    expect(updatedDoc.controller).toContain(externalAuthKey.controller);
+    expect(updatedDoc.authentication[1].slice(-6)).toBe(externalAuthKey.controller.slice(-6));
+    expect(updatedDoc.verificationMethod[1].controller).toBe(externalAuthKey.controller);
 
-  expect(updatedDID).toBe(did);
-  expect(updatedDoc.controller).toContain(externalAuthKey.controller);
-  expect(updatedDoc.authentication[1].slice(-6)).toBe(externalAuthKey.controller.slice(-6));
-  expect(updatedDoc.verificationMethod[1].controller).toBe(externalAuthKey.controller);
-
-  expect(meta.versionId).toBe(5);
-
-  writeFilesToDisk(updatedLog, updatedDoc, 5);
-  currentAuthKey = nextAuthKey;
+    expect(meta.versionId).toBe(5);
+    
+    writeFilesToDisk(updatedLog, updatedDoc, 5+i);
+    currentAuthKey = nextAuthKey;
+    i++;
+  
 });
 
 test("Resolve DID version 5", async () => {

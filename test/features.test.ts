@@ -16,7 +16,7 @@ beforeAll(async () => {
 
   const {doc: newDoc1, log: newLog1} = await createDID({
     domain: 'example.com',
-    VMs: [authKey1],
+    verificationMethods: [authKey1],
     created: new Date('2021-01-01T08:32:55Z')
   });
 
@@ -24,7 +24,7 @@ beforeAll(async () => {
     log: newLog1,
     authKey: authKey1,
     context: newDoc1['@context'],
-    vms: [authKey2],
+    verificationMethods: [authKey2],
     created: new Date('2021-02-01T08:32:55Z')
   });
 
@@ -32,7 +32,7 @@ beforeAll(async () => {
     log: newLog2,
     authKey: authKey2,
     context: newDoc2['@context'],
-    vms: [authKey3],
+    verificationMethods: [authKey3],
     created: new Date('2021-03-01T08:32:55Z')
   });
 
@@ -40,7 +40,7 @@ beforeAll(async () => {
     log: newLog3,
     authKey: authKey3,
     context: newDoc3['@context'],
-    vms: [authKey4],
+    verificationMethods: [authKey4],
     created: new Date('2021-04-01T08:32:55Z')
   });
 
