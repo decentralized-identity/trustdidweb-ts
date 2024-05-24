@@ -47,7 +47,7 @@ interface CreateDIDInterface {
   domain: string;
   controller?: string;
   context?: string | string[];
-  VMs?: VerificationMethod[];
+  verificationMethods?: VerificationMethod[];
   created?: Date;
 }
 
@@ -62,7 +62,7 @@ interface UpdateDIDInterface {
   authKey: VerificationMethod;
   context?: string[];
   controller?: string[];
-  vms?: VerificationMethod[];
+  verificationMethods?: VerificationMethod[];
   services?: ServiceEndpoint[];
   alsoKnownAs?: string[];
   domain?: string;

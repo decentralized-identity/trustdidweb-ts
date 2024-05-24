@@ -14,8 +14,8 @@ test("Update with wrong key fails resolution", async () => {
   const assertionKey = {type: 'assertionMethod', ...availableKeys.ed25519.shift()};
   const {did: newDID, doc: newDoc, meta: createMeta, log: newLog} = await createDID({
     domain: 'example.com',
-    VMs: [
-      authKey,
+    verificationMethods: [
+      authKey as any,
       assertionKey,
     ]});
 
@@ -24,10 +24,10 @@ test("Update with wrong key fails resolution", async () => {
     const result =
       await updateDID({
         log: newLog,
-        authKey: assertionKey!,
+        authKey: assertionKey! as any,
         context: newDoc['@context'],
-        vms: [
-          {type: 'aauthentication', ...availableKeys.ed25519.shift()},
+        verificationMethods: [
+          {type: 'authentication', ...availableKeys.ed25519.shift()},
           {type: 'assertionMethod', ...availableKeys.ed25519.shift()},
         ]
       });
