@@ -12,7 +12,7 @@ beforeAll(async () => {
 test("Update with wrong key fails resolution", async () => {
   const authKey = {type: 'authentication', ...availableKeys.ed25519.shift()};
   const assertionKey = {type: 'assertionMethod', ...availableKeys.ed25519.shift()};
-  const {did: newDID, doc: newDoc, meta: createMeta, log: newLog} = await createDID({
+  const {doc: newDoc, log: newLog} = await createDID({
     domain: 'example.com',
     verificationMethods: [
       authKey as any,

@@ -4,13 +4,12 @@ import { bytesToHex } from "./utils";
 import { canonicalize } from 'json-canonicalize';
 import { createHash } from 'node:crypto';
 
-export const isKeyAuthorized = (authKey: VerificationMethod, prevDoc: any) => {
+export const keyIsAuthorized = (authKey: VerificationMethod, prevDoc: any) => {
   return prevDoc.authentication.some((kId: string) => kId === authKey.id);
 }
 
-
-export const isDocumentStateValid = async (authKey: VerificationMethod, doc: any, proofs: any[], prevDoc: any) => {
-  if (!isKeyAuthorized(authKey, prevDoc)) {
+export const documentStateIsValid = async (authKey: VerificationMethod, doc: any, proofs: any[], prevDoc: any) => {
+  if (!keyIsAuthorized(authKey, prevDoc)) {
     throw new Error(`key ${authKey.id} is not authorized to update.`)
   }
   let i = 0;
@@ -43,4 +42,11 @@ export const isDocumentStateValid = async (authKey: VerificationMethod, doc: any
     i++;
   }
   return true;
+}
+
+export const newKeysAreValid = (options: CreateDIDInterface | UpdateDIDInterface) => {
+  if(!options.verificationMethods?.find(vm => vm.type === 'authentication')) {
+    throw new Error("DIDDoc MUST contain at least one authentication key type");
+  }
+  if(options.prerotate) {}
 }

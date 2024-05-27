@@ -49,6 +49,7 @@ interface CreateDIDInterface {
   context?: string | string[];
   verificationMethods?: VerificationMethod[];
   created?: Date;
+  prerotate?: boolean;
 }
 
 interface SignDIDDocInterface {
@@ -66,5 +67,12 @@ interface UpdateDIDInterface {
   services?: ServiceEndpoint[];
   alsoKnownAs?: string[];
   domain?: string;
-  created?: Date
+  updated?: Date;
+  prerotate?: boolean;
+  deactivated?: boolean;
+}
+
+interface DeactivateDIDInterface {
+  log: DIDLog;
+  authKey: VerificationMethod;
 }
