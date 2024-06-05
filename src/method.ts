@@ -31,10 +31,6 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
     {value: doc}
   ];
   const {logEntryHash} = await deriveHash(logEntry);
-  // logEntry[0] = logEntryHash;
-  // let authKey = {...options.verificationMethods?.find(vm => vm.type === 'authentication')};
-  // authKey.id = createVMID({...authKey, type: 'authentication'}, doc.id!);
-  // const signedDoc = await signDocument(doc, {...authKey, type: 'authentication'}, logEntryHash);
   const signedDoc = await options.signer(doc, logEntryHash);
   logEntry.push([signedDoc.proof]);
   return {

@@ -1,4 +1,3 @@
-import * as Ed25519Multikey from '@digitalbazaar/ed25519-multikey';
 import * as ed from '@noble/ed25519';
 import { bytesToHex, createDate } from "./utils";
 import { base58btc } from "multiformats/bases/base58"
