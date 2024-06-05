@@ -1,6 +1,7 @@
 import { beforeAll, expect, test } from "bun:test";
 import { readKeysFromDisk, readLogFromDisk, writeLogToDisk } from "./utils";
 import { createDID, resolveDID, updateDID } from "../src/method";
+import { createSigner } from "../src/signing";
 
 let availableKeys: { ed25519: (VerificationMethod | null)[]; x25519: (VerificationMethod | null)[]};
 
@@ -14,17 +15,19 @@ test("Update with wrong key fails resolution", async () => {
   const assertionKey = {type: 'assertionMethod', ...availableKeys.ed25519.shift()};
   const {doc: newDoc, log: newLog} = await createDID({
     domain: 'example.com',
+    updateKeys: [`did:key:${authKey.publicKeyMultibase}`],
+    signer: createSigner(authKey as any),
     verificationMethods: [
       authKey as any,
       assertionKey,
     ]});
-
+    
   let err;
   try {
     const result =
       await updateDID({
         log: newLog,
-        authKey: assertionKey! as any,
+        signer: createSigner(assertionKey as any),
         context: newDoc['@context'],
         verificationMethods: [
           {type: 'authentication', ...availableKeys.ed25519.shift()},

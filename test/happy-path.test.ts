@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { readLogFromDisk, readKeysFromDisk } from "./utils";
 import { createVMID } from "../src/utils";
 import { METHOD } from "../src/constants";
+import { createSigner } from "../src/signing";
 
 let docFile: string, logFile: string;
 let did: string;
@@ -54,6 +55,8 @@ beforeAll(async () => {
 test("Create DID (2 keys + domain)", async () => {
   const {did: newDID, doc: newDoc, meta, log: newLog} = await createDID({
     domain: 'example.com',
+    signer: createSigner(currentAuthKey!),
+    updateKeys: [`did:key:${currentAuthKey!.publicKeyMultibase}`],
     verificationMethods: [
       currentAuthKey!,
       {type: 'assertionMethod', ...availableKeys.ed25519.shift()},
@@ -88,7 +91,8 @@ test("Update DID (2 keys, 1 service, change domain)", async () => {
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
       log: didLog,
-      authKey: currentAuthKey!,
+      signer: createSigner(currentAuthKey!),
+      updateKeys: [`did:key:${nextAuthKey.publicKeyMultibase}`],
       context,
       domain: 'migrated.example.com',
       verificationMethods: [
@@ -128,7 +132,8 @@ test("Update DID (3 keys, 2 services)", async () => {
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
       log: didLog,
-      authKey: currentAuthKey!,
+      signer: createSigner(currentAuthKey!),
+      updateKeys: [`did:key:${nextAuthKey.publicKeyMultibase}`],
       context: [...doc['@context'], 'https://didcomm.org/messaging/v2'],
       verificationMethods: [
         nextAuthKey,
@@ -174,7 +179,8 @@ test("Update DID (add alsoKnownAs)", async () => {
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
       log: didLog,
-      authKey: currentAuthKey!,
+      signer: createSigner(currentAuthKey!),
+      updateKeys: [`did:key:${nextAuthKey.publicKeyMultibase}`],
       context: doc['@context'],
       verificationMethods: [
         nextAuthKey,
@@ -210,7 +216,11 @@ test("Update DID (add external controller)", async () => {
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
       log: didLog,
-      authKey: currentAuthKey!,
+      signer: createSigner(currentAuthKey!),
+      updateKeys: [
+        `did:key:${nextAuthKey.publicKeyMultibase}`,
+        `did:key:${externalAuthKey.publicKeyMultibase}`
+      ],
       controller: [
         ...(Array.isArray(doc.controller) ? doc.controller : [doc.controller]),
         externalAuthKey.controller
@@ -251,7 +261,7 @@ test("Deactivate DID", async () => {
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await deactivateDID({
       log: didLog,
-      authKey: currentAuthKey!
+      signer: createSigner(currentAuthKey!)
     });
     didLog = [...updatedLog];
     expect(updatedDID).toBe(did);

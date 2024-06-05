@@ -4,17 +4,17 @@ import { bytesToHex } from "./utils";
 import { canonicalize } from 'json-canonicalize';
 import { createHash } from 'node:crypto';
 
-export const keyIsAuthorized = (authKey: VerificationMethod, prevDoc: any) => {
-  return prevDoc.authentication.some((kId: string) => kId === authKey.id);
+export const keyIsAuthorized = (verificationMethod: string, updateKeys: string[]) => {
+  return updateKeys.includes(verificationMethod);
 }
 
-export const documentStateIsValid = async (authKey: VerificationMethod, doc: any, proofs: any[], prevDoc: any) => {
-  if (!keyIsAuthorized(authKey, prevDoc)) {
-    throw new Error(`key ${authKey.id} is not authorized to update.`)
-  }
+export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: string[]) => {
   let i = 0;
   while(i < proofs.length) {
     const proof = proofs[i];
+    if (!keyIsAuthorized(proof.verificationMethod.split('#')[0], updateKeys)) {
+      throw new Error(`key ${proof.verificationMethod} is not authorized to update.`)
+    }
     if (proof.type !== 'DataIntegrityProof') {
       throw new Error(`Unknown proof type ${proof.type}`);
     }
@@ -24,7 +24,7 @@ export const documentStateIsValid = async (authKey: VerificationMethod, doc: any
     if (proof.cryptosuite !== 'eddsa-jcs-2022') {
       throw new Error(`Unknown cryptosuite ${proof.cryptosuite}`);
     }
-    const publicKey = base58btc.decode(authKey.publicKeyMultibase!);
+    const publicKey = base58btc.decode(proof.verificationMethod.split('did:key:')[1].split('#')[0]);
     const {proofValue, ...restProof} = proof;
     const sig = base58btc.decode(proofValue);
     const dataHash = createHash('sha256').update(canonicalize(doc)).digest();

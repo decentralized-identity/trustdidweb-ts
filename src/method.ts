@@ -2,31 +2,40 @@ import * as jsonpatch from 'fast-json-patch/index.mjs';
 import { clone, createDate, createDIDDoc, createSCID, createVMID, deriveHash, normalizeVMs } from "./utils";
 import { BASE_CONTEXT, METHOD, PLACEHOLDER, PROTOCOL } from './constants';
 import { documentStateIsValid, newKeysAreValid } from './assertions';
-import { signDocument } from './signing';
 
 
 export const createDID = async (options: CreateDIDInterface): Promise<{did: string, doc: any, meta: any, log: DIDLog}> => {
   newKeysAreValid(options);
-  const controller = `did:${METHOD}:${options.domain}:${PLACEHOLDER}`
+  if (!options.updateKeys) {
+    throw new Error('Update keys not supplied')
+  }
+  const controller = `did:${METHOD}:${options.domain}:${PLACEHOLDER}`;
+  const createdDate = createDate(options.created);
   let {doc} = await createDIDDoc({...options, controller});
-  const {logEntryHash: genesisDocHash} = await deriveHash(doc);
-  const scid = await createSCID(genesisDocHash);
+  const initialLogEntry: DIDLogEntry = [
+    PLACEHOLDER,
+    1,
+    createdDate,
+    {method: PROTOCOL, scid: PLACEHOLDER, updateKeys: options.updateKeys},
+    {value: doc}
+  ]
+  const {logEntryHash: initialLogEntryHash} = await deriveHash(initialLogEntry);
+  const scid = await createSCID(initialLogEntryHash);
   doc = JSON.parse(JSON.stringify(doc).replaceAll(PLACEHOLDER, scid));
+
   const logEntry: DIDLogEntry = [
     scid,
     1,
-    createDate(options.created),
-    {method: PROTOCOL, scid},
+    createdDate,
+    {method: PROTOCOL, scid, updateKeys: options.updateKeys},
     {value: doc}
-  ]
+  ];
   const {logEntryHash} = await deriveHash(logEntry);
-  logEntry[0] = logEntryHash;
-  let authKey = {...options.verificationMethods?.find(vm => vm.type === 'authentication')};
-  if (!authKey) {
-    throw new Error('Auth key not supplied')
-  }
-  authKey.id = createVMID({...authKey, type: 'authentication'}, doc.id!);
-  const signedDoc = await signDocument(doc, {...authKey, type: 'authentication'}, logEntryHash);
+  // logEntry[0] = logEntryHash;
+  // let authKey = {...options.verificationMethods?.find(vm => vm.type === 'authentication')};
+  // authKey.id = createVMID({...authKey, type: 'authentication'}, doc.id!);
+  // const signedDoc = await signDocument(doc, {...authKey, type: 'authentication'}, logEntryHash);
+  const signedDoc = await options.signer(doc, logEntryHash);
   logEntry.push([signedDoc.proof]);
   return {
     did: doc.id!,
@@ -54,6 +63,7 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
   let scid = '';
   let created = '';
   let updated = '';
+  let updateKeys = [];
   let previousLogEntryHash = '';
   let i = 0;
   let deactivated: boolean | null = null;
@@ -73,16 +83,23 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
       created = entry[2];
       newDoc = entry[4].value;
       scid = entry[3].scid;
+      updateKeys = entry[3].updateKeys;
       const {logEntryHash} = await deriveHash(
-        JSON.parse(JSON.stringify(newDoc).replaceAll(scid, PLACEHOLDER))
+        [
+          PLACEHOLDER,
+          1,
+          created,
+          JSON.parse(JSON.stringify(entry[3]).replaceAll(scid, PLACEHOLDER)),
+          {value: JSON.parse(JSON.stringify(newDoc).replaceAll(scid, PLACEHOLDER))}
+        ]
       );
       const derivedScid = await createSCID(logEntryHash);
-      previousLogEntryHash = logEntryHash;
+      previousLogEntryHash = derivedScid;
       if (scid !== derivedScid) {
         throw new Error(`SCID '${scid}' not derived from logEntryHash '${logEntryHash}' (scid ${derivedScid})`);
       }
-      const authKey = newDoc.verificationMethod.find((vm: VerificationMethod) => vm.id === entry[5][0].verificationMethod);
-      const verified = await documentStateIsValid(authKey, newDoc, entry[5], newDoc);
+      // const authKey = newDoc.verificationMethod.find((vm: VerificationMethod) => vm.id === entry[5][0].verificationMethod);
+      const verified = await documentStateIsValid(newDoc, entry[5], updateKeys);
       if (!verified) {
         throw new Error(`version ${versionId} failed verification of the proof.`)
       }
@@ -93,18 +110,23 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
       } else {
         newDoc = jsonpatch.applyPatch(doc, entry[4].patch, false, false).newDocument;
       }
-      const {logEntryHash} = await deriveHash([previousLogEntryHash, entry[1], entry[2], entry[3], entry[4]]);
+      const {logEntryHash} = await deriveHash([
+        previousLogEntryHash,
+        entry[1],
+        entry[2],
+        entry[3],
+        entry[4]
+      ]);
       previousLogEntryHash = logEntryHash;
       if (logEntryHash !== entry[0]) {
         throw new Error(`Hash chain broken at '${versionId}'`);
       }
-      const authKey = doc.verificationMethod.find((vm: VerificationMethod) => vm.id === entry[5][0].verificationMethod);
-      if (!authKey) {
-        throw new Error(`Auth key '${entry[5].verificationMethod}' not found in previous document`);
-      }
-      const verified = await documentStateIsValid(authKey, newDoc, entry[5], doc);
+      const verified = await documentStateIsValid(newDoc, entry[5], updateKeys);
       if (!verified) {
         throw new Error(`version ${versionId} failed verification of the proof.`)
+      }
+      if (entry[3].updateKeys) {
+        updateKeys = entry[3].updateKeys;
       }
       if (entry[3].deactivated) {
         deactivated = true;
@@ -135,7 +157,7 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
 
 export const updateDID = async (options: UpdateDIDInterface): Promise<{did: string, doc: any, meta: any, log: DIDLog}> => {
   newKeysAreValid(options);
-  const {log, authKey, context, verificationMethods, services, alsoKnownAs, controller, domain} = options;
+  const {log, updateKeys, context, verificationMethods, services, alsoKnownAs, controller, domain} = options;
   let {did, doc, meta} = await resolveDID(log);
   if (domain) {
     did = `did:${METHOD}:${domain}:${log[0][3].scid}`;
@@ -152,13 +174,17 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
   meta.versionId++;
   meta.updated = createDate(options.updated);
   const patch = jsonpatch.compare(doc, newDoc);
-  const logEntry = [meta.previousLogEntryHash, meta.versionId, meta.updated, {}, {patch: clone(patch)}];
+  const logEntry = [
+    meta.previousLogEntryHash,
+    meta.versionId,
+    meta.updated,
+    {...(updateKeys ? {updateKeys} : {})},
+    {patch: clone(patch)}
+  ];
   const {logEntryHash} = await deriveHash(logEntry);
-  if(!authKey) {
-    throw new Error(`No auth key`);
-  }
-  authKey.id = authKey.id ?? createVMID({...authKey, type: 'authentication'}, doc.id);
-  const signedDoc = await signDocument(newDoc, authKey, logEntryHash);
+  logEntry[0] = logEntryHash;
+  const signedDoc = await options.signer(newDoc, logEntryHash);
+  logEntry.push([signedDoc.proof])
   return {
     did,
     doc: newDoc,
@@ -170,13 +196,13 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
     },
     log: [
       ...clone(log),
-      [logEntryHash, meta.versionId, meta.updated, {}, {patch: clone(patch)}, [signedDoc.proof]]
+      clone(logEntry)
     ]
   };
 }
 
 export const deactivateDID = async (options: DeactivateDIDInterface): Promise<{did: string, doc: any, meta: any, log: DIDLog}> => {
-  const {log, authKey} = options;
+  const {log} = options;
   let {did, doc, meta} = await resolveDID(log);
   const newDoc = {
     ...doc,
@@ -192,11 +218,9 @@ export const deactivateDID = async (options: DeactivateDIDInterface): Promise<{d
   const patch = jsonpatch.compare(doc, newDoc);
   const logEntry = [meta.previousLogEntryHash, meta.versionId, meta.updated, {deactivated: true}, {patch: clone(patch)}];
   const {logEntryHash} = await deriveHash(logEntry);
-  if(!authKey) {
-    throw new Error(`No auth key`);
-  }
-  authKey.id = authKey.id ?? createVMID({...authKey, type: 'authentication'}, doc.id);
-  const signedDoc = await signDocument(newDoc, authKey, logEntryHash);
+  logEntry[0] = logEntryHash;
+  const signedDoc = await options.signer(newDoc, logEntryHash);
+  logEntry.push([signedDoc.proof]);
   return {
     did,
     doc: newDoc,
@@ -209,7 +233,7 @@ export const deactivateDID = async (options: DeactivateDIDInterface): Promise<{d
     },
     log: [
       ...clone(log),
-      [logEntryHash, meta.versionId, meta.updated, {deactivated: true}, {patch: clone(patch)}, [signedDoc.proof]]
+      clone(logEntry)
     ]
   };
 }

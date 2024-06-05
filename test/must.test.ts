@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { readKeysFromDisk, readLogFromDisk, writeLogToDisk } from "./utils";
 import { createDID, deactivateDID, resolveDID, updateDID } from "../src/method";
+import { createSigner } from "../src/signing";
 
 let availableKeys: { ed25519: (VerificationMethod | null)[]; x25519: (VerificationMethod | null)[] };
 
@@ -17,6 +18,8 @@ describe("did:tdw normative tests", async () => {
 
     const { doc, log } = await createDID({
       domain: 'example.com',
+      signer: createSigner(authKey1),
+      updateKeys: [`did:key:${authKey1.publicKeyMultibase}`],
       verificationMethods: [authKey1],
       created: new Date('2024-01-01T08:32:55Z')
     });
@@ -37,6 +40,8 @@ describe("did:tdw normative tests", async () => {
     try {
       await createDID({
         domain: "example.com",
+        signer: createSigner(authKey1),
+        updateKeys: [`did:key:${authKey1.publicKeyMultibase}`],
         verificationMethods: [],
         created: new Date('2024-01-01T08:32:55Z')
       });
@@ -66,7 +71,8 @@ describe("did:tdw normative tests", async () => {
     const authKey2 = { type: 'authentication' as const, ...availableKeys.ed25519.shift() };
     const { doc: updatedDoc, log: updatedLog } = await updateDID({
       log: newLog1,
-      authKey: authKey2,
+      signer: createSigner(authKey2),
+      updateKeys: [`did:key:${authKey2.publicKeyMultibase}`],
       context: newDoc1['@context'],
       verificationMethods: [authKey2],
       updated: new Date('2024-02-01T08:32:55Z')
@@ -82,7 +88,8 @@ describe("did:tdw normative tests", async () => {
     try {
       await updateDID({
         log: newLog1,
-        authKey: authKey1,
+        signer: createSigner(authKey1),
+        updateKeys: [`did:key:${authKey1.publicKeyMultibase}`],
         context: newDoc1['@context'],
         verificationMethods: [],
         updated: new Date('2024-02-01T08:32:55Z')
@@ -96,7 +103,7 @@ describe("did:tdw normative tests", async () => {
   test("Resolver encountering 'deactivated': true MUST return deactivated in metadata (positive)", async () => {
     const { log: updatedLog } = await deactivateDID({
       log: newLog1,
-      authKey: authKey1
+      signer: createSigner(authKey1)
     });
     const resolved = await resolveDID(updatedLog);
     expect(resolved.meta.deactivated).toBe(true);
