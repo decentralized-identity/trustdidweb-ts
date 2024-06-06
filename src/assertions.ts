@@ -1,6 +1,6 @@
 import * as ed from '@noble/ed25519';
 import { base58btc } from "multiformats/bases/base58";
-import { bytesToHex } from "./utils";
+import { bytesToHex, deriveHash } from "./utils";
 import { canonicalize } from 'json-canonicalize';
 import { createHash } from 'node:crypto';
 
@@ -44,9 +44,18 @@ export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: 
   return true;
 }
 
-export const newKeysAreValid = (options: CreateDIDInterface | UpdateDIDInterface) => {
-  if(!options.verificationMethods?.find(vm => vm.type === 'authentication')) {
-    throw new Error("DIDDoc MUST contain at least one authentication key type");
+export const newKeysAreValid = (updateKeys: string[], previousNextKeys: string[], nextKeys: string[], previousPrerotate: boolean, prerotate: boolean) => {
+  if (prerotate && nextKeys.length === 0) {
+    throw new Error(`nextKeys are required if prerotation enabled`);
   }
-  if(options.prerotate) {}
+  if(previousPrerotate) {
+    const inNextKeys = updateKeys.reduce((result, key) => {
+      const hashedKey = deriveHash(key);
+      return result && previousNextKeys.includes(hashedKey);
+    }, true);
+    if (!inNextKeys) {
+      throw new Error(`invalid updateKeys ${updateKeys}`);
+    }
+  }
+  return true;
 }

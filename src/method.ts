@@ -5,10 +5,10 @@ import { documentStateIsValid, newKeysAreValid } from './assertions';
 
 
 export const createDID = async (options: CreateDIDInterface): Promise<{did: string, doc: any, meta: any, log: DIDLog}> => {
-  newKeysAreValid(options);
   if (!options.updateKeys) {
     throw new Error('Update keys not supplied')
   }
+  newKeysAreValid(options.updateKeys, [], options.nextKeys ?? [], false, options.prerotate === true); 
   const controller = `did:${METHOD}:${options.domain}:${PLACEHOLDER}`;
   const createdDate = createDate(options.created);
   let {doc} = await createDIDDoc({...options, controller});
@@ -16,33 +16,35 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
     PLACEHOLDER,
     1,
     createdDate,
-    {method: PROTOCOL, scid: PLACEHOLDER, updateKeys: options.updateKeys},
+    {
+      method: PROTOCOL,
+      scid: PLACEHOLDER,
+      updateKeys: options.updateKeys,
+      ...(options.prerotate ? {prerotate: true, nextKeys: options.nextKeys} : {})
+    },
     {value: doc}
   ]
-  const {logEntryHash: initialLogEntryHash} = await deriveHash(initialLogEntry);
+  const initialLogEntryHash = deriveHash(initialLogEntry);
   const scid = await createSCID(initialLogEntryHash);
   doc = JSON.parse(JSON.stringify(doc).replaceAll(PLACEHOLDER, scid));
 
-  const logEntry: DIDLogEntry = [
-    scid,
-    1,
-    createdDate,
-    {method: PROTOCOL, scid, updateKeys: options.updateKeys},
-    {value: doc}
-  ];
-  const {logEntryHash} = await deriveHash(logEntry);
+  initialLogEntry[0] = scid;
+  initialLogEntry[3] = JSON.parse(JSON.stringify(initialLogEntry[3]).replaceAll(PLACEHOLDER, scid));
+  initialLogEntry[4] = { value: doc }
+  
+  const logEntryHash = deriveHash(initialLogEntry);
   const signedDoc = await options.signer(doc, logEntryHash);
-  logEntry.push([signedDoc.proof]);
+  initialLogEntry.push([signedDoc.proof]);
   return {
     did: doc.id!,
     doc,
     meta: {
       versionId: 1,
-      created: logEntry[2],
-      updated: logEntry[2]
+      created: initialLogEntry[2],
+      updated: initialLogEntry[2]
     },
     log: [
-      logEntry
+      initialLogEntry
     ]
   }
 }
@@ -63,6 +65,8 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
   let previousLogEntryHash = '';
   let i = 0;
   let deactivated: boolean | null = null;
+  let prerotate = false;
+  let nextKeys: string[] = [];
   for (const entry of resolutionLog) {
     if (entry[1] !== versionId + 1) {
       throw new Error(`versionId '${entry[1]}' in log doesn't match expected '${versionId}'.`);
@@ -80,7 +84,10 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
       newDoc = entry[4].value;
       scid = entry[3].scid;
       updateKeys = entry[3].updateKeys;
-      const {logEntryHash} = await deriveHash(
+      prerotate = entry[3].prerotate === true;
+      nextKeys = entry[3].nextKeys ?? [];
+      newKeysAreValid(updateKeys, [], nextKeys, false, prerotate === true); 
+      const logEntryHash = deriveHash(
         [
           PLACEHOLDER,
           1,
@@ -94,7 +101,6 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
       if (scid !== derivedScid) {
         throw new Error(`SCID '${scid}' not derived from logEntryHash '${logEntryHash}' (scid ${derivedScid})`);
       }
-      // const authKey = newDoc.verificationMethod.find((vm: VerificationMethod) => vm.id === entry[5][0].verificationMethod);
       const verified = await documentStateIsValid(newDoc, entry[5], updateKeys);
       if (!verified) {
         throw new Error(`version ${versionId} failed verification of the proof.`)
@@ -106,7 +112,11 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
       } else {
         newDoc = jsonpatch.applyPatch(doc, entry[4].patch, false, false).newDocument;
       }
-      const {logEntryHash} = await deriveHash([
+      if (entry[3].prerotate === true && (!entry[3].nextKeys || entry[3].nextKeys.length === 0)) {
+        throw new Error("prerotate enabled without nextKeys");
+      }
+      newKeysAreValid(entry[3].updateKeys, nextKeys, entry[3].nextKeys ?? [], prerotate, entry[3].prerotate === true);
+      const logEntryHash = deriveHash([
         previousLogEntryHash,
         entry[1],
         entry[2],
@@ -124,8 +134,14 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
       if (entry[3].updateKeys) {
         updateKeys = entry[3].updateKeys;
       }
-      if (entry[3].deactivated) {
+      if (entry[3].deactivated === true) {
         deactivated = true;
+      }
+      if (entry[3].prerotate === true) {
+        prerotate = true;
+      }
+      if (entry[3].nextKeys) {
+        nextKeys = entry[3].nextKeys;
       }
     }
     doc = clone(newDoc);
@@ -145,16 +161,30 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
   if (options.versionTime || options.versionId) {
     throw new Error(`DID with options ${JSON.stringify(options)} not found`);
   }
-  return {did, doc, meta: {
-    versionId, created, updated, previousLogEntryHash, scid,
-    ...(deactivated ? {deactivated}: {})
-  }}
+  return {
+    did,
+    doc,
+    meta: {
+      versionId,
+      created,
+      updated,
+      previousLogEntryHash,
+      scid,
+      prerotate,
+      nextKeys,
+      ...(deactivated ? {deactivated}: {})
+    }
+  }
 }
 
 export const updateDID = async (options: UpdateDIDInterface): Promise<{did: string, doc: any, meta: any, log: DIDLog}> => {
-  newKeysAreValid(options);
-  const {log, updateKeys, context, verificationMethods, services, alsoKnownAs, controller, domain} = options;
+  const {
+    log, updateKeys, context, verificationMethods, services, alsoKnownAs,
+    controller, domain, nextKeys, prerotate
+  } = options;
   let {did, doc, meta} = await resolveDID(log);
+  newKeysAreValid(updateKeys ?? [], meta.nextKeys ?? [], nextKeys ?? [], meta.prerotate === true, prerotate === true);
+
   if (domain) {
     did = `did:${METHOD}:${domain}:${log[0][3].scid}`;
   }
@@ -174,10 +204,13 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
     meta.previousLogEntryHash,
     meta.versionId,
     meta.updated,
-    {...(updateKeys ? {updateKeys} : {})},
+    {
+      ...(updateKeys ? {updateKeys} : {}),
+      ...(prerotate ? {prerotate: true, nextKeys} : {})
+    },
     {patch: clone(patch)}
   ];
-  const {logEntryHash} = await deriveHash(logEntry);
+  const logEntryHash = deriveHash(logEntry);
   logEntry[0] = logEntryHash;
   const signedDoc = await options.signer(newDoc, logEntryHash);
   logEntry.push([signedDoc.proof])
@@ -213,7 +246,7 @@ export const deactivateDID = async (options: DeactivateDIDInterface): Promise<{d
   meta.updated = createDate(meta.created);
   const patch = jsonpatch.compare(doc, newDoc);
   const logEntry = [meta.previousLogEntryHash, meta.versionId, meta.updated, {deactivated: true}, {patch: clone(patch)}];
-  const {logEntryHash} = await deriveHash(logEntry);
+  const logEntryHash = deriveHash(logEntry);
   logEntry[0] = logEntryHash;
   const signedDoc = await options.signer(newDoc, logEntryHash);
   logEntry.push([signedDoc.proof]);
