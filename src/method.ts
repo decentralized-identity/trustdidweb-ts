@@ -8,7 +8,7 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
   if (!options.updateKeys) {
     throw new Error('Update keys not supplied')
   }
-  newKeysAreValid(options.updateKeys, [], options.nextKeys ?? [], false, options.prerotate === true); 
+  newKeysAreValid(options.updateKeys, [], options.nextKeyHashes ?? [], false, options.prerotate === true); 
   const controller = `did:${METHOD}:${options.domain}:${PLACEHOLDER}`;
   const createdDate = createDate(options.created);
   let {doc} = await createDIDDoc({...options, controller});
@@ -20,7 +20,7 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
       method: PROTOCOL,
       scid: PLACEHOLDER,
       updateKeys: options.updateKeys,
-      ...(options.prerotate ? {prerotate: true, nextKeys: options.nextKeys} : {})
+      ...(options.prerotate ? {prerotate: true, nextKeyHashes: options.nextKeyHashes} : {})
     },
     {value: doc}
   ]
@@ -66,7 +66,7 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
   let i = 0;
   let deactivated: boolean | null = null;
   let prerotate = false;
-  let nextKeys: string[] = [];
+  let nextKeyHashes: string[] = [];
   for (const entry of resolutionLog) {
     if (entry[1] !== versionId + 1) {
       throw new Error(`versionId '${entry[1]}' in log doesn't match expected '${versionId}'.`);
@@ -85,8 +85,8 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
       scid = entry[3].scid;
       updateKeys = entry[3].updateKeys;
       prerotate = entry[3].prerotate === true;
-      nextKeys = entry[3].nextKeys ?? [];
-      newKeysAreValid(updateKeys, [], nextKeys, false, prerotate === true); 
+      nextKeyHashes = entry[3].nextKeyHashes ?? [];
+      newKeysAreValid(updateKeys, [], nextKeyHashes, false, prerotate === true); 
       const logEntryHash = deriveHash(
         [
           PLACEHOLDER,
@@ -112,10 +112,10 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
       } else {
         newDoc = jsonpatch.applyPatch(doc, entry[4].patch, false, false).newDocument;
       }
-      if (entry[3].prerotate === true && (!entry[3].nextKeys || entry[3].nextKeys.length === 0)) {
-        throw new Error("prerotate enabled without nextKeys");
+      if (entry[3].prerotate === true && (!entry[3].nextKeyHashes || entry[3].nextKeyHashes.length === 0)) {
+        throw new Error("prerotate enabled without nextKeyHashes");
       }
-      newKeysAreValid(entry[3].updateKeys, nextKeys, entry[3].nextKeys ?? [], prerotate, entry[3].prerotate === true);
+      newKeysAreValid(entry[3].updateKeys, nextKeyHashes, entry[3].nextKeyHashes ?? [], prerotate, entry[3].prerotate === true);
       const logEntryHash = deriveHash([
         previousLogEntryHash,
         entry[1],
@@ -140,8 +140,8 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
       if (entry[3].prerotate === true) {
         prerotate = true;
       }
-      if (entry[3].nextKeys) {
-        nextKeys = entry[3].nextKeys;
+      if (entry[3].nextKeyHashes) {
+        nextKeyHashes = entry[3].nextKeyHashes;
       }
     }
     doc = clone(newDoc);
@@ -171,7 +171,7 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
       previousLogEntryHash,
       scid,
       prerotate,
-      nextKeys,
+      nextKeyHashes,
       ...(deactivated ? {deactivated}: {})
     }
   }
@@ -180,10 +180,10 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
 export const updateDID = async (options: UpdateDIDInterface): Promise<{did: string, doc: any, meta: any, log: DIDLog}> => {
   const {
     log, updateKeys, context, verificationMethods, services, alsoKnownAs,
-    controller, domain, nextKeys, prerotate
+    controller, domain, nextKeyHashes, prerotate
   } = options;
   let {did, doc, meta} = await resolveDID(log);
-  newKeysAreValid(updateKeys ?? [], meta.nextKeys ?? [], nextKeys ?? [], meta.prerotate === true, prerotate === true);
+  newKeysAreValid(updateKeys ?? [], meta.nextKeyHashes ?? [], nextKeyHashes ?? [], meta.prerotate === true, prerotate === true);
 
   if (domain) {
     did = `did:${METHOD}:${domain}:${log[0][3].scid}`;
@@ -206,7 +206,7 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
     meta.updated,
     {
       ...(updateKeys ? {updateKeys} : {}),
-      ...(prerotate ? {prerotate: true, nextKeys} : {})
+      ...(prerotate ? {prerotate: true, nextKeyHashes} : {})
     },
     {patch: clone(patch)}
   ];

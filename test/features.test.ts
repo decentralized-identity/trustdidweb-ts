@@ -81,7 +81,7 @@ test("Resolve DID latest", async () => {
   expect(resolved.meta.versionId).toBe(4);
 });
 
-test("Require `nextKeys` if prerotation enabled in Create", async () => {
+test("Require `nextKeyHashes` if prerotation enabled in Create", async () => {
   let err: any;
   const authKey1 = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
   try {
@@ -96,10 +96,10 @@ test("Require `nextKeys` if prerotation enabled in Create", async () => {
       err = e;
     }
     expect(err).toBeDefined();
-    expect(err.message).toContain("nextKeys are required if prerotation enabled");
+    expect(err.message).toContain("nextKeyHashes are required if prerotation enabled");
 });
 
-test("Require `nextKeys` if prerotation enabled in Read (when enabled in Create)", async () => {
+test("Require `nextKeyHashes` if prerotation enabled in Read (when enabled in Create)", async () => {
   let err;
   const badLog: DIDLog = [
     [ "5v2bjwgmeqpnuu669zd7956w1w14", 1, "2024-06-06T08:23:06Z", {
@@ -146,7 +146,7 @@ test("Require `nextKeys` if prerotation enabled in Read (when enabled in Create)
   expect(err).toBeDefined();
 });
 
-test("Require `nextKeys` if prerotation enabled in Update", async () => {
+test("Require `nextKeyHashes` if prerotation enabled in Update", async () => {
   let err: any;
   const authKey1 = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
   const {did, log} = await createDID({
@@ -169,10 +169,10 @@ test("Require `nextKeys` if prerotation enabled in Update", async () => {
   }
 
   expect(err).toBeDefined();
-  expect(err.message).toContain('nextKeys are required if prerotation enabled')
+  expect(err.message).toContain('nextKeyHashes are required if prerotation enabled')
 });
 
-test("Require `nextKeys` if prerotation enabled in Read (when enabled in update)", async () => {
+test("Require `nextKeyHashes` if prerotation enabled in Read (when enabled in Update)", async () => {
   let err: any;
   const badLog: DIDLog = [
     [ "0kavr6x6ny2x52uz9m49mrw530mm", 1, "2024-06-06T17:08:22Z", {
@@ -240,10 +240,10 @@ test("Require `nextKeys` if prerotation enabled in Read (when enabled in update)
   }
 
   expect(err).toBeDefined();
-  expect(err.message).toContain('prerotate enabled without nextKeys')
+  expect(err.message).toContain('prerotate enabled without nextKeyHashes')
 });
 
-test("updateKeys MUST be in nextKeys if prerotation enabled in Create", async () => {
+test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Create", async () => {
   let err: any;
   
   try {
@@ -256,14 +256,14 @@ test("updateKeys MUST be in nextKeys if prerotation enabled in Create", async ()
       updateKeys: [`did:key:${authKey1.publicKeyMultibase}`],
       verificationMethods: [authKey1],
       prerotate: true,
-      nextKeys: [deriveHash(`did:key:${authKey2.publicKeyMultibase}`)]
+      nextKeyHashes: [deriveHash(`did:key:${authKey2.publicKeyMultibase}`)]
     });
     const {log: updatedLog} = await updateDID({
       log,
       signer: createSigner(authKey1),
       updateKeys: [`did:key:${authKey3.publicKeyMultibase}`],
       verificationMethods: [authKey3],
-      nextKeys: [deriveHash(`did:key:${authKey3.publicKeyMultibase}`)]
+      nextKeyHashes: [deriveHash(`did:key:${authKey3.publicKeyMultibase}`)]
     });
   } catch(e) {
     err = e;
@@ -273,27 +273,28 @@ test("updateKeys MUST be in nextKeys if prerotation enabled in Create", async ()
   expect(err.message).toContain('invalid updateKeys')
 });
 
-test("updateKeys MUST be in nextKeys if prerotation enabled in Read (when enabled in Create)", async () => {
+test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when enabled in Create)", async () => {
   let err: any;
   const badLog: DIDLog = [
-    [ "tt3y1vvwmz7zff0hb21p291ybpga", 1, "2024-06-06T21:06:12Z", {
+    [ "3npb5kwtyequz8wguewcbhv64866", 1, "2024-06-06T21:15:06Z", {
         method: "did:tdw:1",
-        scid: "tt3y1vvwmz7zff0hb21p291ybpga",
+        scid: "3npb5kwtyequz8wguewcbhv64866",
         updateKeys: [ "did:key:z6MkkmrDWT9n8rmAVfEvuyBFroc6RFNffAoycrLw4jDJpwPh" ],
         prerotate: true,
-        nextKeys: [ "29cbdvcekerkfxv39ec2ew3q93qv78k1pkvv6zybp4cyy1j9qbw0" ],
-      }, {
+        nextKeyHashes: [ "29cbdvcekerkfxv39ec2ew3q93qv78k1pkvv6zybp4cyy1j9qbw0" ],
+      },
+      {
         value: {
           "@context": [ "https://www.w3.org/ns/did/v1", "https://w3id.org/security/multikey/v1"
           ],
-          id: "did:tdw:example.com:tt3y1vvwmz7zff0hb21p291ybpga",
-          controller: "did:tdw:example.com:tt3y1vvwmz7zff0hb21p291ybpga",
-          authentication: [ "did:tdw:example.com:tt3y1vvwmz7zff0hb21p291ybpga#4jDJpwPh"
+          id: "did:tdw:example.com:3npb5kwtyequz8wguewcbhv64866",
+          controller: "did:tdw:example.com:3npb5kwtyequz8wguewcbhv64866",
+          authentication: [ "did:tdw:example.com:3npb5kwtyequz8wguewcbhv64866#4jDJpwPh"
           ],
           verificationMethod: [
             {
-              id: "did:tdw:example.com:tt3y1vvwmz7zff0hb21p291ybpga#4jDJpwPh",
-              controller: "did:tdw:example.com:tt3y1vvwmz7zff0hb21p291ybpga",
+              id: "did:tdw:example.com:3npb5kwtyequz8wguewcbhv64866#4jDJpwPh",
+              controller: "did:tdw:example.com:3npb5kwtyequz8wguewcbhv64866",
               type: "Multikey",
               publicKeyMultibase: "z6MkkmrDWT9n8rmAVfEvuyBFroc6RFNffAoycrLw4jDJpwPh",
             }
@@ -304,12 +305,13 @@ test("updateKeys MUST be in nextKeys if prerotation enabled in Read (when enable
           type: "DataIntegrityProof",
           cryptosuite: "eddsa-jcs-2022",
           verificationMethod: "did:key:z6MkkmrDWT9n8rmAVfEvuyBFroc6RFNffAoycrLw4jDJpwPh",
-          created: "2024-06-06T21:06:12Z",
+          created: "2024-06-06T21:15:06Z",
           proofPurpose: "authentication",
-          challenge: "bgnqfx0hznvdy3jqghgh89rftchn1becq3ydd66fyh3h0d4a8440",
-          proofValue: "z4h9rYPQPm55M4sUCv683kCgdiAAL6KhsDirvg1ggrT7hmPMSzshqCrNCGPkD2S7TPMBn5Mwd9JfH8NesR2mMo5Up",
+          challenge: "fkyuz1nprhkr8p1faa86rzqabxptp7e15x4e26cbe8zrrytbhv20",
+          proofValue: "z2xFMcqPV1J39se3ufho41rs7BtmaNhXeLywmDWqHUb6UWwWtzPHADTKcqqqpjW5zj2VkTMosLnrd4sVwQmRBC2vE",
         }
-      ] ], [ "uj81kwj0x8dypxg50g3qj2mjj1exk0kz6474zc2qmjbzye7t1a90", 2, "2024-06-06T21:06:12Z",
+      ]
+    ], [ "dfwf221utarjr9jxd1ywun9wftmgpeybfumqatw1g6rj9u4wdgm0", 2, "2024-06-06T21:15:06Z",
       {
         updateKeys: [ "did:key:z6MkhGC8KFeSQq8y7Jt2wUgyyTgwJAbMt16gKEwCBgxQ25XL" ],
       },
@@ -322,15 +324,15 @@ test("updateKeys MUST be in nextKeys if prerotation enabled in Read (when enable
           }, {
             op: "replace",
             path: "/verificationMethod/0/id",
-            value: "did:tdw:example.com:tt3y1vvwmz7zff0hb21p291ybpga#BgxQ25XL",
+            value: "did:tdw:example.com:3npb5kwtyequz8wguewcbhv64866#BgxQ25XL",
           }, {
             op: "replace",
             path: "/authentication/0",
-            value: "did:tdw:example.com:tt3y1vvwmz7zff0hb21p291ybpga#BgxQ25XL",
+            value: "did:tdw:example.com:3npb5kwtyequz8wguewcbhv64866#BgxQ25XL",
           }, {
             op: "replace",
             path: "/controller",
-            value: [ "did:tdw:example.com:tt3y1vvwmz7zff0hb21p291ybpga" ],
+            value: [ "did:tdw:example.com:3npb5kwtyequz8wguewcbhv64866" ],
           }
         ],
       }, [
@@ -338,10 +340,10 @@ test("updateKeys MUST be in nextKeys if prerotation enabled in Read (when enable
           type: "DataIntegrityProof",
           cryptosuite: "eddsa-jcs-2022",
           verificationMethod: "did:key:z6MkkmrDWT9n8rmAVfEvuyBFroc6RFNffAoycrLw4jDJpwPh",
-          created: "2024-06-06T21:06:12Z",
+          created: "2024-06-06T21:15:06Z",
           proofPurpose: "authentication",
-          challenge: "uj81kwj0x8dypxg50g3qj2mjj1exk0kz6474zc2qmjbzye7t1a90",
-          proofValue: "z4PQiE11c8MJ6TahFNyKLL185tz3pkQnbUURKQ8LwEmo2BvGpzLGHhByq1nRpdZf4hhTcGgwxgPD616N9XtyRgYi7",
+          challenge: "dfwf221utarjr9jxd1ywun9wftmgpeybfumqatw1g6rj9u4wdgm0",
+          proofValue: "z2WVpGENx3Rr2sS3S6puJcGds29FS45c5npgu3m8gJ5PuaN34Htow8uCUu3vD9UZYotbA4t6BmJcGTXrdyWV7ErzM",
         }
       ]
     ]
@@ -356,7 +358,7 @@ test("updateKeys MUST be in nextKeys if prerotation enabled in Read (when enable
   expect(err.message).toContain('invalid updateKeys')
 });
 
-test("updateKeys MUST be in nextKeys if prerotation enabled in Update", async () => {
+test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Update", async () => {
   let err: any;
   
   try {
@@ -376,14 +378,14 @@ test("updateKeys MUST be in nextKeys if prerotation enabled in Update", async ()
       updateKeys: [`did:key:${authKey2.publicKeyMultibase}`],
       verificationMethods: [authKey3],
       prerotate: true,
-      nextKeys: [deriveHash(`did:key:${authKey3.publicKeyMultibase}`)]
+      nextKeyHashes: [deriveHash(`did:key:${authKey3.publicKeyMultibase}`)]
     });
     const {log: updatedLog2} = await updateDID({
       log: updatedLog,
       signer: createSigner(authKey2),
       updateKeys: [`did:key:${authKey4.publicKeyMultibase}`],
       verificationMethods: [authKey3],
-      nextKeys: [`did:key:${authKey1.publicKeyMultibase}`]
+      nextKeyHashes: [`did:key:${authKey1.publicKeyMultibase}`]
     });
   } catch(e) {
     err = e;
@@ -393,26 +395,26 @@ test("updateKeys MUST be in nextKeys if prerotation enabled in Update", async ()
   expect(err.message).toContain('invalid updateKeys')
 });
 
-test("updateKeys MUST be in nextKeys if prerotation enabled in Read (when enabled in Update)", async () => {
+test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when enabled in Update)", async () => {
   let err: any;
   const badLog: DIDLog = [
-    [ "7kana772j1zd4n4d8tq5fkkyzygh", 1, "2024-06-06T21:08:24Z", {
+    [ "nrj04rkrgz0aut7detqqtgtv0246", 1, "2024-06-06T21:16:04Z", {
         method: "did:tdw:1",
-        scid: "7kana772j1zd4n4d8tq5fkkyzygh",
+        scid: "nrj04rkrgz0aut7detqqtgtv0246",
         updateKeys: [ "did:key:z6MktpbfYB3usrBJYN5uEou8o3iFfurWTCWUHEMHUn97YusZ" ],
       },
       {
         value: {
           "@context": [ "https://www.w3.org/ns/did/v1", "https://w3id.org/security/multikey/v1"
           ],
-          id: "did:tdw:example.com:7kana772j1zd4n4d8tq5fkkyzygh",
-          controller: "did:tdw:example.com:7kana772j1zd4n4d8tq5fkkyzygh",
-          authentication: [ "did:tdw:example.com:7kana772j1zd4n4d8tq5fkkyzygh#Un97YusZ"
+          id: "did:tdw:example.com:nrj04rkrgz0aut7detqqtgtv0246",
+          controller: "did:tdw:example.com:nrj04rkrgz0aut7detqqtgtv0246",
+          authentication: [ "did:tdw:example.com:nrj04rkrgz0aut7detqqtgtv0246#Un97YusZ"
           ],
           verificationMethod: [
             {
-              id: "did:tdw:example.com:7kana772j1zd4n4d8tq5fkkyzygh#Un97YusZ",
-              controller: "did:tdw:example.com:7kana772j1zd4n4d8tq5fkkyzygh",
+              id: "did:tdw:example.com:nrj04rkrgz0aut7detqqtgtv0246#Un97YusZ",
+              controller: "did:tdw:example.com:nrj04rkrgz0aut7detqqtgtv0246",
               type: "Multikey",
               publicKeyMultibase: "z6MktpbfYB3usrBJYN5uEou8o3iFfurWTCWUHEMHUn97YusZ",
             }
@@ -423,18 +425,19 @@ test("updateKeys MUST be in nextKeys if prerotation enabled in Read (when enable
           type: "DataIntegrityProof",
           cryptosuite: "eddsa-jcs-2022",
           verificationMethod: "did:key:z6MktpbfYB3usrBJYN5uEou8o3iFfurWTCWUHEMHUn97YusZ",
-          created: "2024-06-06T21:08:24Z",
+          created: "2024-06-06T21:16:04Z",
           proofPurpose: "authentication",
-          challenge: "y5dbjd7z6qqu22wc010d05vcgx190amnvng6gvgdvkexdgynvzgg",
-          proofValue: "z2D78Yny7AWVsebXJ2J1WXMMpnXnQBFnR25jpHpr99DxfF4aBzw1rLGqzbPL99h43MbhtC5n4RxxJQNYeBjnyEReZ",
+          challenge: "67rb9gv5qxgjf8fg2je022ju4tquyq5pxkzxr9g348b6h9dr05q0",
+          proofValue: "zrGcuVL2H5LFws2uX1wGLwQux3ZFUBcGp6puPEmn1vf1xkPB98Vin72KBvVr5m3ekRoa2NFhXkpHm9K31NpR5dhp",
         }
       ]
-    ], [ "kpwn32hc2r9ge18txh3cg0z6dybev9jqdmxv8my92qyd79afq4bg", 2, "2024-06-06T21:08:24Z",
+    ], [ "24ktmaw8tu1n80fd91tkf82a3qaz10m5j45341x3913e8yxu8eag", 2, "2024-06-06T21:16:04Z",
       {
         updateKeys: [ "did:key:z6MkvVjSMp6xsghjQP54WndyEAjKHduUVxxqm1oMfdPocsYi" ],
         prerotate: true,
-        nextKeys: [ "yb6xe3kub8xdwgq4y98jafz5bnb0xydd2b17ymd4607v7k8b4y9g" ],
-      }, {
+        nextKeyHashes: [ "yb6xe3kub8xdwgq4y98jafz5bnb0xydd2b17ymd4607v7k8b4y9g" ],
+      },
+      {
         patch: [
           {
             op: "replace",
@@ -443,15 +446,15 @@ test("updateKeys MUST be in nextKeys if prerotation enabled in Read (when enable
           }, {
             op: "replace",
             path: "/verificationMethod/0/id",
-            value: "did:tdw:example.com:7kana772j1zd4n4d8tq5fkkyzygh#kN4vg2XL",
+            value: "did:tdw:example.com:nrj04rkrgz0aut7detqqtgtv0246#kN4vg2XL",
           }, {
             op: "replace",
             path: "/authentication/0",
-            value: "did:tdw:example.com:7kana772j1zd4n4d8tq5fkkyzygh#kN4vg2XL",
+            value: "did:tdw:example.com:nrj04rkrgz0aut7detqqtgtv0246#kN4vg2XL",
           }, {
             op: "replace",
             path: "/controller",
-            value: [ "did:tdw:example.com:7kana772j1zd4n4d8tq5fkkyzygh" ],
+            value: [ "did:tdw:example.com:nrj04rkrgz0aut7detqqtgtv0246" ],
           }
         ],
       }, [
@@ -459,13 +462,13 @@ test("updateKeys MUST be in nextKeys if prerotation enabled in Read (when enable
           type: "DataIntegrityProof",
           cryptosuite: "eddsa-jcs-2022",
           verificationMethod: "did:key:z6MktpbfYB3usrBJYN5uEou8o3iFfurWTCWUHEMHUn97YusZ",
-          created: "2024-06-06T21:08:24Z",
+          created: "2024-06-06T21:16:04Z",
           proofPurpose: "authentication",
-          challenge: "kpwn32hc2r9ge18txh3cg0z6dybev9jqdmxv8my92qyd79afq4bg",
-          proofValue: "z4AiFRGhnbqa1CkELtQ8vtVKSMaJJfWyiMhN65krvZZNweNtpW5gA8pMFHc87YzUWx7bgZAMcYHMtfgHCp6EEBsyK",
+          challenge: "24ktmaw8tu1n80fd91tkf82a3qaz10m5j45341x3913e8yxu8eag",
+          proofValue: "z5iZadg1V1U5ESea1y1TX2jzsNjzuemv6PbQo2ZbH9em1qHkmDMG6qQp3MGvTH2YsJMRxZwqsC1UgjVMuxScG1Tpm",
         }
       ]
-    ], [ "9zf4kumwc4paq33wg694w1ranw5vap72am8fqcmb210274cfpzug", 3, "2024-06-06T21:08:24Z",
+    ], [ "0utxe7j8dh31r4r3z5tghqqjjq883uey8mnwqtna5y80qeuaev5g", 3, "2024-06-06T21:16:04Z",
       {
         updateKeys: [ "did:key:z6MkrnFAx9KWrcZPhW4HGdVkUqT7Bnzk9Q4DSNHTz9esZP8c" ],
       },
@@ -476,10 +479,10 @@ test("updateKeys MUST be in nextKeys if prerotation enabled in Read (when enable
           type: "DataIntegrityProof",
           cryptosuite: "eddsa-jcs-2022",
           verificationMethod: "did:key:z6MkvVjSMp6xsghjQP54WndyEAjKHduUVxxqm1oMfdPocsYi",
-          created: "2024-06-06T21:08:24Z",
+          created: "2024-06-06T21:16:04Z",
           proofPurpose: "authentication",
-          challenge: "9zf4kumwc4paq33wg694w1ranw5vap72am8fqcmb210274cfpzug",
-          proofValue: "zBJ6cZhooNe1yfgTDALDRKwAfizfQXZqjYci9XAs3S3FDGwDsyKAKrfuCW5iQPQB5jfg8ipjSc8Hatef1veLKAsK",
+          challenge: "0utxe7j8dh31r4r3z5tghqqjjq883uey8mnwqtna5y80qeuaev5g",
+          proofValue: "z5KDJTw1C2fRwTsxVzP1GXUJgapWeWxvd5VrwLucY4Pr1fwaMHDQsQwH5cPDdwSNUxiR7LHMUMpvhchDABUW8b2wB",
         }
       ]
     ]

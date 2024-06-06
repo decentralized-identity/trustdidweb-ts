@@ -26,7 +26,7 @@ type DIDLogEntry = [
     scid?: string,
     updateKeys?: string[],
     prerotate?: boolean,
-    nextKeys?: string[]
+    nextKeyHashes?: string[]
   },
   data: {value: any} | {patch: DIDOperation[]},
   proof?: any
@@ -58,7 +58,7 @@ interface CreateDIDInterface {
   verificationMethods?: VerificationMethod[];
   created?: Date;
   prerotate?: boolean;
-  nextKeys?: string[];
+  nextKeyHashes?: string[];
 }
 
 interface SignDIDDocInterface {
@@ -80,7 +80,7 @@ interface UpdateDIDInterface {
   updated?: Date;
   deactivated?: boolean;
   prerotate?: boolean;
-  nextKeys?: string[];
+  nextKeyHashes?: string[];
 }
 
 interface DeactivateDIDInterface {
