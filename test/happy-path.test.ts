@@ -1,10 +1,10 @@
 import { test, expect, beforeAll } from "bun:test";
-import { createDID, resolveDID, updateDID } from "../src/method";
+import { createDID, deactivateDID, resolveDID, updateDID } from "../src/method";
 import fs from 'node:fs';
-import {generate as generateEd25519} from '@digitalbazaar/ed25519-multikey';
 import { readLogFromDisk, readKeysFromDisk } from "./utils";
 import { createVMID } from "../src/utils";
 import { METHOD } from "../src/constants";
+import { createSigner } from "../src/signing";
 
 let docFile: string, logFile: string;
 let did: string;
@@ -55,6 +55,8 @@ beforeAll(async () => {
 test("Create DID (2 keys + domain)", async () => {
   const {did: newDID, doc: newDoc, meta, log: newLog} = await createDID({
     domain: 'example.com',
+    signer: createSigner(currentAuthKey!),
+    updateKeys: [`did:key:${currentAuthKey!.publicKeyMultibase}`],
     verificationMethods: [
       currentAuthKey!,
       {type: 'assertionMethod', ...availableKeys.ed25519.shift()},
@@ -89,7 +91,8 @@ test("Update DID (2 keys, 1 service, change domain)", async () => {
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
       log: didLog,
-      authKey: currentAuthKey!,
+      signer: createSigner(currentAuthKey!),
+      updateKeys: [`did:key:${nextAuthKey.publicKeyMultibase}`],
       context,
       domain: 'migrated.example.com',
       verificationMethods: [
@@ -129,7 +132,8 @@ test("Update DID (3 keys, 2 services)", async () => {
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
       log: didLog,
-      authKey: currentAuthKey!,
+      signer: createSigner(currentAuthKey!),
+      updateKeys: [`did:key:${nextAuthKey.publicKeyMultibase}`],
       context: [...doc['@context'], 'https://didcomm.org/messaging/v2'],
       verificationMethods: [
         nextAuthKey,
@@ -175,7 +179,8 @@ test("Update DID (add alsoKnownAs)", async () => {
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
       log: didLog,
-      authKey: currentAuthKey!,
+      signer: createSigner(currentAuthKey!),
+      updateKeys: [`did:key:${nextAuthKey.publicKeyMultibase}`],
       context: doc['@context'],
       verificationMethods: [
         nextAuthKey,
@@ -198,7 +203,6 @@ test("Resolve DID version 4", async () => {
 });
 
 test("Update DID (add external controller)", async () => {
-  let i = 0;
   let didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
   if (availableKeys.ed25519.length === 0) {
@@ -212,8 +216,15 @@ test("Update DID (add external controller)", async () => {
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
       log: didLog,
-      authKey: currentAuthKey!,
-      controller: [doc.controller, externalAuthKey.controller],
+      signer: createSigner(currentAuthKey!),
+      updateKeys: [
+        `did:key:${nextAuthKey.publicKeyMultibase}`,
+        `did:key:${externalAuthKey.publicKeyMultibase}`
+      ],
+      controller: [
+        ...(Array.isArray(doc.controller) ? doc.controller : [doc.controller]),
+        externalAuthKey.controller
+      ],
       context: doc['@context'],
       verificationMethods: [
         nextAuthKey,
@@ -230,12 +241,41 @@ test("Update DID (add external controller)", async () => {
 
     expect(meta.versionId).toBe(5);
     
-    writeFilesToDisk(updatedLog, updatedDoc, 5+i);
+    writeFilesToDisk(updatedLog, updatedDoc, 5);
     currentAuthKey = nextAuthKey;
-    i++;
-  
 });
 
 test("Resolve DID version 5", async () => {
   await testResolveVersion(5);
+});
+
+// ADD ANY NEW TESTS HERE AND BUMP VERSION NUMBER AT END OF FILE
+
+test("Deactivate DID", async () => {
+  let didLog = readLogFromDisk(logFile);
+  const {doc} = await resolveDID(didLog);
+  if (availableKeys.ed25519.length === 0) {
+    const {keys} = readKeysFromDisk();
+    availableKeys = JSON.parse(keys);
+  }
+  const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
+    await deactivateDID({
+      log: didLog,
+      signer: createSigner(currentAuthKey!)
+    });
+    didLog = [...updatedLog];
+    expect(updatedDID).toBe(did);
+    expect(updatedDoc.controller).toEqual(expect.arrayContaining(doc.controller));
+    expect(updatedDoc.controller.length).toEqual(doc.controller.length);
+    expect(updatedDoc.authentication.length).toBe(0);
+    expect(updatedDoc.verificationMethod.length).toBe(0);
+    expect(meta.deactivated).toBe(true);
+
+    expect(meta.versionId).toBe(6);
+    
+    writeFilesToDisk(updatedLog, updatedDoc, 6);
+});
+
+test("Resolve DID version 6", async () => {
+  await testResolveVersion(6);
 });

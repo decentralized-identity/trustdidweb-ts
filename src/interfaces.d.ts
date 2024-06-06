@@ -21,7 +21,7 @@ type DIDLogEntry = [
   logEntryHash: string,
   versionId: number,
   timestamp: string,
-  params: {method?: string, scid?: string},
+  params: {method?: string, scid?: string, updateKeys?: string[]},
   data: {value: any} | {path: DIDOperation[]},
   proof?: any
 ];
@@ -45,10 +45,13 @@ interface VerificationMethod {
 
 interface CreateDIDInterface {
   domain: string;
+  updateKeys: string[];
+  signer: (doc: any, challenge: string) => Promise<{proof: any}>;
   controller?: string;
   context?: string | string[];
   verificationMethods?: VerificationMethod[];
   created?: Date;
+  prerotate?: boolean;
 }
 
 interface SignDIDDocInterface {
@@ -59,12 +62,20 @@ interface SignDIDDocInterface {
 
 interface UpdateDIDInterface {
   log: DIDLog;
-  authKey: VerificationMethod;
+  signer: (doc: any, challenge: string) => Promise<{proof: any}>;
+  updateKeys?: string[];
   context?: string[];
   controller?: string[];
   verificationMethods?: VerificationMethod[];
   services?: ServiceEndpoint[];
   alsoKnownAs?: string[];
   domain?: string;
-  created?: Date
+  updated?: Date;
+  prerotate?: boolean;
+  deactivated?: boolean;
+}
+
+interface DeactivateDIDInterface {
+  log: DIDLog;
+  signer: (doc: any, challenge: string) => Promise<{proof: any}>;
 }
