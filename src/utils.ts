@@ -15,10 +15,10 @@ export const createSCID = async (logEntryHash: string): Promise<string> => {
   return `${logEntryHash.slice(0, 28)}`;
 }
 
-export const deriveHash = async (input: any): Promise<{logEntryHash: string}> => {
+export const deriveHash = (input: any): string => {
   const data = canonicalize(input);
   const hash = createHash('sha256').update(data).digest();
-  return {logEntryHash: base32.encode(hash)};
+  return base32.encode(hash);
 }
 
 export const createDIDDoc = async (options: CreateDIDInterface): Promise<{doc: DIDDoc}> => {
