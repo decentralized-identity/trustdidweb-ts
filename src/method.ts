@@ -41,7 +41,8 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
     meta: {
       versionId: 1,
       created: initialLogEntry[2],
-      updated: initialLogEntry[2]
+      updated: initialLogEntry[2],
+      ...(options.prerotate ? {prerotate: true, nextKeyHashes: options.nextKeyHashes} : {})
     },
     log: [
       initialLogEntry
@@ -115,7 +116,7 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
       if (entry[3].prerotate === true && (!entry[3].nextKeyHashes || entry[3].nextKeyHashes.length === 0)) {
         throw new Error("prerotate enabled without nextKeyHashes");
       }
-      newKeysAreValid(entry[3].updateKeys, nextKeyHashes, entry[3].nextKeyHashes ?? [], prerotate, entry[3].prerotate === true);
+      newKeysAreValid(entry[3].updateKeys ?? [], nextKeyHashes, entry[3].nextKeyHashes ?? [], prerotate, entry[3].prerotate === true);
       const logEntryHash = deriveHash([
         previousLogEntryHash,
         entry[1],
@@ -221,7 +222,8 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
       versionId: meta.versionId,
       created: meta.created,
       updated: meta.updated,
-      previousLogEntryHash: meta.previousLogEntryHash
+      previousLogEntryHash: meta.previousLogEntryHash,
+      ...(prerotate ? {prerotate: true, nextKeyHashes} : {})
     },
     log: [
       ...clone(log),

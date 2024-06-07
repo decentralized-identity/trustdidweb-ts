@@ -2,7 +2,7 @@ import { test, expect, beforeAll } from "bun:test";
 import { createDID, deactivateDID, resolveDID, updateDID } from "../src/method";
 import fs from 'node:fs';
 import { readLogFromDisk, readKeysFromDisk } from "./utils";
-import { createVMID } from "../src/utils";
+import { createVMID, deriveHash } from "../src/utils";
 import { METHOD } from "../src/constants";
 import { createSigner } from "../src/signing";
 
@@ -249,6 +249,49 @@ test("Resolve DID version 5", async () => {
   await testResolveVersion(5);
 });
 
+test("Update DID (enable prerotate)", async () => {
+  let didLog = readLogFromDisk(logFile);
+  const {doc} = await resolveDID(didLog);
+  if (availableKeys.ed25519.length === 0) {
+    const {keys} = readKeysFromDisk();
+    availableKeys = JSON.parse(keys);
+  }
+
+  const nextAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
+  const nextNextAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
+  const nextNextKeyHash = deriveHash(`did:key:${nextNextAuthKey.publicKeyMultibase}`);
+  const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
+    await updateDID({
+      log: didLog,
+      signer: createSigner(currentAuthKey!),
+      updateKeys: [
+        `did:key:${nextAuthKey.publicKeyMultibase}`
+      ],
+      prerotate: true,
+      nextKeyHashes: [nextNextKeyHash],
+      context: doc['@context'],
+      verificationMethods: [
+        nextAuthKey
+      ],
+      services: doc.service,
+      alsoKnownAs: ['did:web:example.com']
+    });
+    didLog = [...updatedLog];
+    expect(updatedDID).toBe(did);
+    expect(updatedDoc.controller).toContain(did)
+    expect(meta.prerotate).toBe(true);
+    expect(meta.nextKeyHashes).toContain(nextNextKeyHash);
+
+    expect(meta.versionId).toBe(6);
+    
+    writeFilesToDisk(updatedLog, updatedDoc, 6);
+    currentAuthKey = nextAuthKey;
+});
+
+test("Resolve DID version 6", async () => {
+  await testResolveVersion(6);
+});
+
 // ADD ANY NEW TESTS HERE AND BUMP VERSION NUMBER AT END OF FILE
 
 test("Deactivate DID", async () => {
@@ -271,11 +314,11 @@ test("Deactivate DID", async () => {
     expect(updatedDoc.verificationMethod.length).toBe(0);
     expect(meta.deactivated).toBe(true);
 
-    expect(meta.versionId).toBe(6);
+    expect(meta.versionId).toBe(7);
     
-    writeFilesToDisk(updatedLog, updatedDoc, 6);
+    writeFilesToDisk(updatedLog, updatedDoc, 7);
 });
 
-test("Resolve DID version 6", async () => {
-  await testResolveVersion(6);
+test("Resolve DID version 7", async () => {
+  await testResolveVersion(7);
 });
