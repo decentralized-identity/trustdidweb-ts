@@ -44,16 +44,16 @@ export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: 
   return true;
 }
 
-export const newKeysAreValid = (updateKeys: string[], previousnextKeyHashes: string[], nextKeyHashes: string[], previousPrerotate: boolean, prerotate: boolean) => {
+export const newKeysAreValid = (updateKeys: string[], previousNextKeyHashes: string[], nextKeyHashes: string[], previousPrerotate: boolean, prerotate: boolean) => {
   if (prerotate && nextKeyHashes.length === 0) {
     throw new Error(`nextKeyHashes are required if prerotation enabled`);
   }
   if(previousPrerotate) {
-    const innextKeyHashes = updateKeys.reduce((result, key) => {
+    const inNextKeyHashes = updateKeys.reduce((result, key) => {
       const hashedKey = deriveHash(key);
-      return result && previousnextKeyHashes.includes(hashedKey);
+      return result && previousNextKeyHashes.includes(hashedKey);
     }, true);
-    if (!innextKeyHashes) {
+    if (!inNextKeyHashes) {
       throw new Error(`invalid updateKeys ${updateKeys}`);
     }
   }
