@@ -5,6 +5,21 @@ import { nanoid } from 'nanoid';
 
 export const clone = (input: any) => JSON.parse(JSON.stringify(input));
 
+export const getFileUrl = (id: string) => {
+  if (id.split('did:tdw:').length === 1) {
+    throw new Error(`${id} is not a valid did:tdw identifier`);
+  }
+  let [_, methodId] = id.split('did:tdw:');
+  const path = methodId.split(':').length - 1 > 0;
+  methodId = methodId.replaceAll(':', '/');
+  methodId = methodId.replaceAll('%3A', ':');
+  const protocol = `http${methodId.includes('localhost') ? '' : 's'}`;
+  if (path) {
+    return `${protocol}://${methodId}/did.jsonl`;
+  }
+  return `${protocol}://${methodId}/.well-known/did.jsonl`;
+}
+
 export const createDate = (created?: Date) => new Date(created ?? Date.now()).toISOString().slice(0,-5)+'Z';
 
 export function bytesToHex(bytes: Uint8Array): string {
@@ -17,7 +32,7 @@ export const createSCID = async (logEntryHash: string): Promise<string> => {
 
 export const deriveHash = (input: any): string => {
   const data = canonicalize(input);
-  const hash = createHash('sha256').update(data).digest();
+  const hash = createHash('sha3-256').update(data).digest();
   return base32.encode(hash);
 }
 

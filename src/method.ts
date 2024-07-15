@@ -28,7 +28,7 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
   const scid = await createSCID(initialLogEntryHash);
   doc = JSON.parse(JSON.stringify(doc).replaceAll(PLACEHOLDER, scid));
 
-  initialLogEntry[0] = scid;
+  initialLogEntry[0] = initialLogEntryHash;
   initialLogEntry[3] = JSON.parse(JSON.stringify(initialLogEntry[3]).replaceAll(PLACEHOLDER, scid));
   initialLogEntry[4] = { value: doc }
   

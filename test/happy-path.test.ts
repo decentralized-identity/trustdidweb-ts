@@ -94,7 +94,7 @@ test("Update DID (2 keys, 1 service, change domain)", async () => {
       signer: createSigner(currentAuthKey!),
       updateKeys: [`did:key:${nextAuthKey.publicKeyMultibase}`],
       context,
-      domain: 'migrated.example.com',
+      domain: 'localhost%3A8000',
       verificationMethods: [
         nextAuthKey,
         {type: 'assertionMethod', ...availableKeys.ed25519.shift()},
@@ -108,7 +108,7 @@ test("Update DID (2 keys, 1 service, change domain)", async () => {
       ]
     });
 
-  expect(updatedDID).toContain('migrated.example.com');
+  expect(updatedDID).toContain('localhost%3A8000');
   expect(updatedDoc.service.length).toBe(1);
   expect(updatedDoc.service[0].id).toBe(`${did}#whois`);
   expect(updatedDoc.service[0].type).toBe('LinkedVerifiablePresentation');
