@@ -15,8 +15,8 @@ export const createSigner = (vm: VerificationMethod) => {
         proofPurpose: 'authentication',
         challenge
       }
-      const dataHash = createHash('sha3-256').update(canonicalize(doc)).digest();
-      const proofHash = createHash('sha3-256').update(canonicalize(proof)).digest();
+      const dataHash = createHash('sha256').update(canonicalize(doc)).digest();
+      const proofHash = createHash('sha256').update(canonicalize(proof)).digest();
       const input = Buffer.concat([dataHash, proofHash]);
       const secretKey = base58btc.decode(vm.secretKeyMultibase!);
 

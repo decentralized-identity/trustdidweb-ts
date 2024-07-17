@@ -1,7 +1,7 @@
 import base32 from 'base32';
 import { canonicalize } from 'json-canonicalize';
-import { createHash } from 'node:crypto';
 import { nanoid } from 'nanoid';
+import { createHash } from 'node:crypto';
 
 export const clone = (input: any) => JSON.parse(JSON.stringify(input));
 
@@ -32,7 +32,7 @@ export const createSCID = async (logEntryHash: string): Promise<string> => {
 
 export const deriveHash = (input: any): string => {
   const data = canonicalize(input);
-  const hash = createHash('sha3-256').update(data).digest();
+  const hash = createHash('sha256').update(data).digest();
   return base32.encode(hash);
 }
 

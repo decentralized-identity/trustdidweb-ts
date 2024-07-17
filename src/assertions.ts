@@ -27,8 +27,8 @@ export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: 
     const publicKey = base58btc.decode(proof.verificationMethod.split('did:key:')[1].split('#')[0]);
     const {proofValue, ...restProof} = proof;
     const sig = base58btc.decode(proofValue);
-    const dataHash = createHash('sha3-256').update(canonicalize(doc)).digest();
-    const proofHash = createHash('sha3-256').update(canonicalize(restProof)).digest();
+    const dataHash = createHash('sha256').update(canonicalize(doc)).digest();
+    const proofHash = createHash('sha256').update(canonicalize(restProof)).digest();
     const input = Buffer.concat([dataHash, proofHash]);
 
     const verified = await ed.verifyAsync(

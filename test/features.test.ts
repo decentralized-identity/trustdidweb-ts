@@ -146,7 +146,7 @@ test("Require `nextKeyHashes` if prerotation enabled in Read (when enabled in Cr
   expect(err).toBeDefined();
 });
 
-test.only("Require `nextKeyHashes` if prerotation enabled in Update", async () => {
+test("Require `nextKeyHashes` if prerotation enabled in Update", async () => {
   let err: any;
   const authKey1 = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
   const {did, log} = await createDID({
