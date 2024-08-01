@@ -25,6 +25,9 @@ export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: 
       throw new Error(`Unknown cryptosuite ${proof.cryptosuite}`);
     }
     const publicKey = base58btc.decode(proof.verificationMethod.split('did:key:')[1].split('#')[0]);
+    if (publicKey[0] !== 237 || publicKey[1] !== 1) {
+      throw new Error(`multiKey doesn't include ed25519 header (0xed01)`)
+    }
     const {proofValue, ...restProof} = proof;
     const sig = base58btc.decode(proofValue);
     const dataHash = createHash('sha256').update(canonicalize(doc)).digest();

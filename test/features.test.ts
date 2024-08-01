@@ -1,21 +1,20 @@
 import { beforeAll, expect, test } from "bun:test";
-import { readKeysFromDisk, readLogFromDisk, writeLogToDisk } from "./utils";
 import { createDID, resolveDID, updateDID } from "../src/method";
-import { createSigner } from "../src/signing";
+import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 import { deriveHash } from "../src/utils";
 
-let availableKeys: { ed25519: (VerificationMethod | null)[]; x25519: (VerificationMethod | null)[]};
 let log: DIDLog;
+let authKey1: VerificationMethod,
+    authKey2: VerificationMethod,
+    authKey3: VerificationMethod,
+    authKey4: VerificationMethod;
 
 beforeAll(async () => {
-  const {keys} = readKeysFromDisk();
-  availableKeys = JSON.parse(keys);
-
-  const authKey1 = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
-  const authKey2 = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
-  const authKey3 = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
-  const authKey4 = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
-
+  authKey1 = await generateEd25519VerificationMethod('authentication');
+  authKey2 = await generateEd25519VerificationMethod('authentication');
+  authKey3 = await generateEd25519VerificationMethod('authentication');
+  authKey4 = await generateEd25519VerificationMethod('authentication');
+  
   const {doc: newDoc1, log: newLog1} = await createDID({
     domain: 'example.com',
     signer: createSigner(authKey1),
@@ -83,7 +82,6 @@ test("Resolve DID latest", async () => {
 
 test("Require `nextKeyHashes` if prerotation enabled in Create", async () => {
   let err: any;
-  const authKey1 = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
   try {
     const {did, log} = await createDID({
         domain: "example.com",
@@ -148,7 +146,6 @@ test("Require `nextKeyHashes` if prerotation enabled in Read (when enabled in Cr
 
 test("Require `nextKeyHashes` if prerotation enabled in Update", async () => {
   let err: any;
-  const authKey1 = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
   const {did, log} = await createDID({
     domain: "example.com",
     signer: createSigner(authKey1),
@@ -247,9 +244,6 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Create", asy
   let err: any;
   
   try {
-    const authKey1 = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
-    const authKey2 = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
-    const authKey3 = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
     const {did, log} = await createDID({
       domain: "example.com",
       signer: createSigner(authKey1),
@@ -362,10 +356,6 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Update", asy
   let err: any;
   
   try {
-    const authKey1 = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
-    const authKey2 = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
-    const authKey3 = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
-    const authKey4 = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
     const {did, log} = await createDID({
       domain: "example.com",
       signer: createSigner(authKey1),

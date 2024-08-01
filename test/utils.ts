@@ -1,9 +1,5 @@
 import fs from 'node:fs';
 
-export const readKeysFromDisk = () => {
-  return {keys: fs.readFileSync('./test/fixtures/keys.json', 'utf8')}
-}
-
 export const readLogFromDisk = (path: string): DIDLog => {
   return fs.readFileSync(path, 'utf8').trim().split('\n').map(l => JSON.parse(l));
 }

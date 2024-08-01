@@ -1,9 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
-import { readKeysFromDisk, readLogFromDisk, writeLogToDisk } from "./utils";
 import { createDID, deactivateDID, resolveDID, updateDID } from "../src/method";
-import { createSigner } from "../src/signing";
+import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 
-let availableKeys: { ed25519: (VerificationMethod | null)[]; x25519: (VerificationMethod | null)[] };
 
 describe("did:tdw normative tests", async () => {
   let newDoc1: any;
@@ -11,10 +9,7 @@ describe("did:tdw normative tests", async () => {
   let authKey1: VerificationMethod;
 
   beforeAll(async () => {
-    const { keys } = readKeysFromDisk();
-    availableKeys = JSON.parse(keys);
-
-    authKey1 = { type: 'authentication' as const, ...availableKeys.ed25519.shift() };
+    authKey1 = await generateEd25519VerificationMethod('authentication');
 
     const { doc, log } = await createDID({
       domain: 'example.com',
@@ -45,7 +40,7 @@ describe("did:tdw normative tests", async () => {
   });
 
   test("Update implementation MUST generate a correct DID Entry (positive)", async () => {
-    const authKey2 = { type: 'authentication' as const, ...availableKeys.ed25519.shift() };
+    const authKey2 = await generateEd25519VerificationMethod('authentication');
     const { doc: updatedDoc, log: updatedLog } = await updateDID({
       log: newLog1,
       signer: createSigner(authKey2),

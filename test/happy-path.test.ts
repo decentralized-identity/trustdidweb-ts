@@ -1,14 +1,13 @@
 import { test, expect, beforeAll } from "bun:test";
 import { createDID, deactivateDID, resolveDID, updateDID } from "../src/method";
 import fs from 'node:fs';
-import { readLogFromDisk, readKeysFromDisk } from "./utils";
+import { readLogFromDisk } from "./utils";
 import { createVMID, deriveHash } from "../src/utils";
 import { METHOD } from "../src/constants";
-import { createSigner } from "../src/signing";
+import { createSigner, generateEd25519VerificationMethod, generateX25519VerificationMethod } from "../src/cryptography";
 
 let docFile: string, logFile: string;
 let did: string;
-let availableKeys: { ed25519: (VerificationMethod | null)[]; x25519: (VerificationMethod | null)[]};
 let currentAuthKey: VerificationMethod | null = null;
 
 const verboseMode = Bun.env['LOG_RESOLVES'] === 'true';
@@ -47,9 +46,7 @@ const testResolveVersion = async (versionId: number) => {
 }
 
 beforeAll(async () => {
-  const {keys} = readKeysFromDisk();
-  availableKeys = JSON.parse(keys);
-  currentAuthKey = {type: 'authentication', ...availableKeys.ed25519.shift()};
+  currentAuthKey = await generateEd25519VerificationMethod('authentication');
 });
 
 test("Create DID (2 keys + domain)", async () => {
@@ -59,7 +56,7 @@ test("Create DID (2 keys + domain)", async () => {
     updateKeys: [`did:key:${currentAuthKey!.publicKeyMultibase}`],
     verificationMethods: [
       currentAuthKey!,
-      {type: 'assertionMethod', ...availableKeys.ed25519.shift()},
+      await generateEd25519VerificationMethod('assertionMethod')
     ]});
   did = newDID;
   currentAuthKey!.controller = did;
@@ -84,7 +81,7 @@ test("Resolve DID version 1", async () => {
 });
 
 test("Update DID (2 keys, 1 service, change domain)", async () => {
-  const nextAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
+  const nextAuthKey = await generateEd25519VerificationMethod('authentication');
   const didLog = readLogFromDisk(logFile);
   const context = ["https://identity.foundation/linked-vp/contexts/v1"];
 
@@ -97,7 +94,7 @@ test("Update DID (2 keys, 1 service, change domain)", async () => {
       domain: 'localhost%3A8000',
       verificationMethods: [
         nextAuthKey,
-        {type: 'assertionMethod', ...availableKeys.ed25519.shift()},
+        await generateEd25519VerificationMethod('assertionMethod')
       ],
       services: [
         {
@@ -125,7 +122,7 @@ test("Resolve DID version 2", async () => {
 });
 
 test("Update DID (3 keys, 2 services)", async () => {
-  const nextAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
+  const nextAuthKey = await generateEd25519VerificationMethod('authentication');
   const didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
 
@@ -137,8 +134,8 @@ test("Update DID (3 keys, 2 services)", async () => {
       context: [...doc['@context'], 'https://didcomm.org/messaging/v2'],
       verificationMethods: [
         nextAuthKey,
-        {type: 'assertionMethod', ...availableKeys.ed25519.shift()},
-        {type: 'keyAgreement', ...availableKeys.x25519.shift()}
+        await generateEd25519VerificationMethod('assertionMethod'),
+        await generateX25519VerificationMethod('keyAgreement')
       ],
       services: [
         ...doc.service,
@@ -172,7 +169,7 @@ test("Resolve DID version 3", async () => {
 });
 
 test("Update DID (add alsoKnownAs)", async () => {
-  const nextAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
+  const nextAuthKey = await generateEd25519VerificationMethod('authentication');
   const didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
 
@@ -184,8 +181,8 @@ test("Update DID (add alsoKnownAs)", async () => {
       context: doc['@context'],
       verificationMethods: [
         nextAuthKey,
-        {type: 'assertionMethod', ...availableKeys.ed25519.shift()},
-        {type: 'keyAgreement', ...availableKeys.x25519.shift()},
+        await generateEd25519VerificationMethod('assertionMethod'),
+        await generateX25519VerificationMethod('keyAgreement')
       ],
       services: doc.service,
       alsoKnownAs: ['did:web:example.com']
@@ -205,13 +202,8 @@ test("Resolve DID version 4", async () => {
 test("Update DID (add external controller)", async () => {
   let didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
-  if (availableKeys.ed25519.length === 0) {
-    const {keys} = readKeysFromDisk();
-    availableKeys = JSON.parse(keys);
-  }
-  const {publicKeyMultibase, secretKeyMultibase} = availableKeys.ed25519.shift()!;
-  const nextAuthKey = {type: 'authentication' as const, publicKeyMultibase, secretKeyMultibase};
-  const externalAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
+  const nextAuthKey = await generateEd25519VerificationMethod('authentication');
+  const externalAuthKey = await generateEd25519VerificationMethod('authentication');
   externalAuthKey.controller = `did:key:${externalAuthKey.publicKeyMultibase}`;
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
@@ -252,13 +244,9 @@ test("Resolve DID version 5", async () => {
 test("Update DID (enable prerotate)", async () => {
   let didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
-  if (availableKeys.ed25519.length === 0) {
-    const {keys} = readKeysFromDisk();
-    availableKeys = JSON.parse(keys);
-  }
 
-  const nextAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
-  const nextNextAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
+  const nextAuthKey = await generateEd25519VerificationMethod('authentication');
+  const nextNextAuthKey = await generateEd25519VerificationMethod('authentication');
   const nextNextKeyHash = deriveHash(`did:key:${nextNextAuthKey.publicKeyMultibase}`);
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
@@ -297,10 +285,6 @@ test("Resolve DID version 6", async () => {
 test("Deactivate DID", async () => {
   let didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
-  if (availableKeys.ed25519.length === 0) {
-    const {keys} = readKeysFromDisk();
-    availableKeys = JSON.parse(keys);
-  }
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await deactivateDID({
       log: didLog,
