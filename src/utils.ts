@@ -6,18 +6,24 @@ import { createHash } from 'node:crypto';
 export const clone = (input: any) => JSON.parse(JSON.stringify(input));
 
 export const getFileUrl = (id: string) => {
-  if (id.split('did:tdw:').length === 1) {
+  if (!id.startsWith('did:tdw:')) {
     throw new Error(`${id} is not a valid did:tdw identifier`);
   }
-  let [_, methodId] = id.split('did:tdw:');
-  const path = methodId.split(':').length - 1 > 0;
-  methodId = methodId.replaceAll(':', '/');
-  methodId = methodId.replaceAll('%3A', ':');
-  const protocol = `http${methodId.includes('localhost') ? '' : 's'}`;
-  if (path) {
-    return `${protocol}://${methodId}/did.jsonl`;
+  
+  const parts = id.split(':');
+  if (parts.length < 4) {
+    throw new Error(`${id} is not a valid did:tdw identifier`);
   }
-  return `${protocol}://${methodId}/.well-known/did.jsonl`;
+  
+  const scid = parts[2];
+  const domain = parts.slice(3).join(':');
+  
+  const protocol = domain.includes('localhost') ? 'http' : 'https';
+  
+  if (domain.includes('/')) {
+    return `${protocol}://${domain}/did.jsonl`;
+  }
+  return `${protocol}://${domain}/.well-known/did.jsonl`;
 }
 
 export const createDate = (created?: Date) => new Date(created ?? Date.now()).toISOString().slice(0,-5)+'Z';

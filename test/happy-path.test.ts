@@ -64,7 +64,7 @@ test("Create DID (2 keys + domain)", async () => {
 
   expect(newDID).toContain('example.com');
   expect(newDID.split(':').length).toBe(4);
-  expect(newDID.split(':').at(-1)?.length).toBe(28);
+  expect(newDID.split(':').at(2)?.length).toBe(28);
   expect(newDoc.verificationMethod.length).toBe(2);
   expect(newDoc.id).toBe(newDID);
   expect(newLog.length).toBe(1);

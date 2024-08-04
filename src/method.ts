@@ -9,7 +9,7 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
     throw new Error('Update keys not supplied')
   }
   newKeysAreValid(options.updateKeys, [], options.nextKeyHashes ?? [], false, options.prerotate === true); 
-  const controller = `did:${METHOD}:${options.domain}:${PLACEHOLDER}`;
+  const controller = `did:${METHOD}:${PLACEHOLDER}:${options.domain}`;
   const createdDate = createDate(options.created);
   let {doc} = await createDIDDoc({...options, controller});
   const initialLogEntry: DIDLogEntry = [
