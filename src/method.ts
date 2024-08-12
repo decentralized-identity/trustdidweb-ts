@@ -1,7 +1,7 @@
 import * as jsonpatch from 'fast-json-patch/index.mjs';
 import { clone, createDate, createDIDDoc, createSCID, createVMID, deriveHash, normalizeVMs } from "./utils";
 import { BASE_CONTEXT, METHOD, PLACEHOLDER, PROTOCOL } from './constants';
-import { documentStateIsValid, newKeysAreValid } from './assertions';
+import { documentStateIsValid, hashChainValid, newKeysAreValid } from './assertions';
 
 
 export const createDID = async (options: CreateDIDInterface): Promise<{did: string, doc: any, meta: any, log: DIDLog}> => {
@@ -20,6 +20,7 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
       method: PROTOCOL,
       scid: PLACEHOLDER,
       updateKeys: options.updateKeys,
+      portable: options.portable ?? false,
       ...(options.prerotate ? {prerotate: true, nextKeyHashes: options.nextKeyHashes} : {})
     },
     {value: doc}
@@ -62,7 +63,9 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
   let scid = '';
   let created = '';
   let updated = '';
+  let host = '';
   let updateKeys = [];
+  let portable = false;
   let previousLogEntryHash = '';
   let i = 0;
   let deactivated: boolean | null = null;
@@ -83,7 +86,9 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
     if (versionId === 1) {
       created = entry[2];
       newDoc = entry[4].value;
+      host = newDoc.id.split(':').at(-1);
       scid = entry[3].scid;
+      portable = entry[3].portable;
       updateKeys = entry[3].updateKeys;
       prerotate = entry[3].prerotate === true;
       nextKeyHashes = entry[3].nextKeyHashes ?? [];
@@ -116,6 +121,12 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
       if (entry[3].prerotate === true && (!entry[3].nextKeyHashes || entry[3].nextKeyHashes.length === 0)) {
         throw new Error("prerotate enabled without nextKeyHashes");
       }
+      const newHost = newDoc.id.split(':').at(-1);
+      if (!portable && newHost !== host) {
+        throw new Error("Cannot move DID: portability is disabled");
+      } else if (newHost !== host) {
+        host = newHost;
+      }
       newKeysAreValid(entry[3].updateKeys ?? [], nextKeyHashes, entry[3].nextKeyHashes ?? [], prerotate, entry[3].prerotate === true);
       const logEntryHash = deriveHash([
         previousLogEntryHash,
@@ -125,7 +136,7 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
         entry[4]
       ]);
       previousLogEntryHash = logEntryHash;
-      if (logEntryHash !== entry[0]) {
+      if (!hashChainValid(logEntryHash, entry[0])) {
         throw new Error(`Hash chain broken at '${versionId}'`);
       }
       const verified = await documentStateIsValid(newDoc, entry[5], updateKeys);
@@ -172,6 +183,7 @@ export const resolveDID = async (log: DIDLog, options: {versionId?: number, vers
       previousLogEntryHash,
       scid,
       prerotate,
+      portable,
       nextKeyHashes,
       ...(deactivated ? {deactivated}: {})
     }
@@ -187,6 +199,9 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
   newKeysAreValid(updateKeys ?? [], meta.nextKeyHashes ?? [], nextKeyHashes ?? [], meta.prerotate === true, prerotate === true);
 
   if (domain) {
+    if (!meta.portable) {
+      throw new Error(`Cannot move DID: portability is disabled`);
+    }
     did = `did:${METHOD}:${domain}:${log[0][3].scid}`;
   }
   const {all} = normalizeVMs(verificationMethods, did);

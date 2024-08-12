@@ -54,6 +54,7 @@ test("Create DID (2 keys + domain)", async () => {
     domain: 'example.com',
     signer: createSigner(currentAuthKey!),
     updateKeys: [`did:key:${currentAuthKey!.publicKeyMultibase}`],
+    portable: true,
     verificationMethods: [
       currentAuthKey!,
       await generateEd25519VerificationMethod('assertionMethod')
@@ -72,6 +73,7 @@ test("Create DID (2 keys + domain)", async () => {
   expect(newLog[0][1]).toBe(meta.versionId);
   expect(newLog[0][2]).toBe(meta.created);
   expect(newLog[0][3].method).toBe(`did:${METHOD}:1`);
+  expect(newLog[0][3].portable).toBe(true);
 
   writeFilesToDisk(newLog, newDoc, 1);
 });

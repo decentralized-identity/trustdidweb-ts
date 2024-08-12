@@ -47,6 +47,10 @@ export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: 
   return true;
 }
 
+export const hashChainValid = (derivedHash: string, logEntryHash: string) => {
+  return derivedHash === logEntryHash;
+}
+
 export const newKeysAreValid = (updateKeys: string[], previousNextKeyHashes: string[], nextKeyHashes: string[], previousPrerotate: boolean, prerotate: boolean) => {
   if (prerotate && nextKeyHashes.length === 0) {
     throw new Error(`nextKeyHashes are required if prerotation enabled`);

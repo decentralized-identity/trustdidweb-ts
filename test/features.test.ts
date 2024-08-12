@@ -1,13 +1,17 @@
-import { beforeAll, expect, test } from "bun:test";
+import * as jsonpatch from 'fast-json-patch/index.mjs';
+import { beforeAll, expect, test} from "bun:test";
 import { createDID, resolveDID, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
-import { deriveHash } from "../src/utils";
+import { deriveHash, createDate, clone } from "../src/utils";
 
 let log: DIDLog;
 let authKey1: VerificationMethod,
     authKey2: VerificationMethod,
     authKey3: VerificationMethod,
     authKey4: VerificationMethod;
+
+let nonPortableDID: { did: string; doc: any; meta: any; log: DIDLog };
+let portableDID: { did: string; doc: any; meta: any; log: DIDLog };
 
 beforeAll(async () => {
   authKey1 = await generateEd25519VerificationMethod('authentication');
@@ -51,6 +55,24 @@ beforeAll(async () => {
   });
 
   log = newLog4;
+
+  nonPortableDID = await createDID({
+    domain: 'example.com',
+    signer: createSigner(authKey1),
+    updateKeys: [`did:key:${authKey1.publicKeyMultibase}`],
+    verificationMethods: [authKey1],
+    created: new Date('2021-01-01T08:32:55Z'),
+    portable: false // Set portable to false
+  });
+
+  portableDID = await createDID({
+    domain: 'example.com',
+    signer: createSigner(authKey2),
+    updateKeys: [`did:key:${authKey2.publicKeyMultibase}`],
+    verificationMethods: [authKey2],
+    created: new Date('2021-01-01T08:32:55Z'),
+    portable: true // Set portable to true
+  });
 });
 
 test("Resolve DID at time (first)", async () => {
@@ -485,4 +507,84 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when e
 
   expect(err).toBeDefined();
   expect(err.message).toContain('invalid updateKeys')
+});
+
+test("DID log with portable false should not resolve if moved", async () => {
+  let err: any;
+  try {
+    const lastEntry = nonPortableDID.log[nonPortableDID.log.length - 1];
+    const newTimestamp = createDate(new Date('2021-02-01T08:32:55Z'));
+    
+    // Create a new document with the moved DID
+    const newDoc = {
+      ...nonPortableDID.doc,
+      id: nonPortableDID.did.replace('example.com', 'newdomain.com')
+    };
+    // Generate the patch
+    const patch = jsonpatch.compare(nonPortableDID.doc, newDoc);
+
+    // Create the new log entry (without the hash and proof initially)
+    const newEntry = [
+      '1-test', // placeholder for the hash
+      lastEntry[1] + 1, // Increment the version
+      newTimestamp,
+      { updateKeys: [`did:key:${authKey1.publicKeyMultibase}`] },
+      { patch },
+      {
+        type: "DataIntegrityProof",
+        cryptosuite: "eddsa-jcs-2022",
+        verificationMethod: `did:key:${authKey1.publicKeyMultibase}`,
+        created: newTimestamp,
+        proofPurpose: "authentication",
+        challenge: '1-test',
+        proofValue: "z5KDJTw1C2fRwTsxVzP1GXUJgapWeWxvd5VrwLucY4Pr1fwaMHDQsQwH5cPDdwSNUxiR7LHMUMpvhchDABUW8b2wB"
+      }
+    ];
+
+    const badLog: DIDLog = [
+      ...nonPortableDID.log as any,
+      newEntry
+    ];
+
+    await resolveDID(badLog);
+  } catch (e) {
+    err = e;
+  }
+
+  expect(err).toBeDefined();
+  expect(err.message).toContain('Cannot move DID: portability is disabled');
+});
+
+test("updateDID should not allow moving a non-portable DID", async () => {
+  let err: any;
+  try {
+    const newTimestamp = createDate(new Date('2021-02-01T08:32:55Z'));
+    const newDomain = 'newdomain.com';
+    
+    const updateOptions = {
+      log: clone(nonPortableDID.log),
+      updateKeys: [`did:key:${authKey1.publicKeyMultibase}`],
+      domain: newDomain,
+      updated: newTimestamp,
+      signer: async (doc: any, challenge: string) => ({
+        ...doc,
+        proof: {
+          type: "DataIntegrityProof",
+          cryptosuite: "eddsa-jcs-2022",
+          verificationMethod: `did:key:${authKey1.publicKeyMultibase}`,
+          created: newTimestamp,
+          proofPurpose: "authentication",
+          challenge,
+          proofValue: "z5KDJTw1C2fRwTsxVzP1GXUJgapWeWxvd5VrwLucY4Pr1fwaMHDQsQwH5cPDdwSNUxiR7LHMUMpvhchDABUW8b2wB"
+        }
+      })
+    };
+
+    await updateDID(updateOptions);
+  } catch (e) {
+    err = e;
+  }
+
+  expect(err).toBeDefined();
+  expect(err.message).toContain('Cannot move DID: portability is disabled');
 });
