@@ -17,7 +17,7 @@ const logFilePath =
     `./test/logs/${id}/did${verboseMode && version ? '.' + version : ''}.jsonl`;
 
 const writeFilesToDisk = (_log: DIDLog, _doc: any, version: number) => {
-  let id = _doc.id.split(':').at(-1);
+  let id = _doc.id.split(':').at(-2);
   if (verboseMode) {
     id = 'test-run';
   }
@@ -64,7 +64,7 @@ test("Create DID (2 keys + domain)", async () => {
 
   expect(newDID).toContain('example.com');
   expect(newDID.split(':').length).toBe(4);
-  expect(newDID.split(':').at(2)?.length).toBe(28);
+  expect(newDID.split(':').at(-2)?.length).toBe(28);
   expect(newDoc.verificationMethod.length).toBe(2);
   expect(newDoc.id).toBe(newDID);
   expect(newLog.length).toBe(1);
