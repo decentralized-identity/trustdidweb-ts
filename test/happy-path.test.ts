@@ -32,16 +32,16 @@ const writeFilesToDisk = (_log: DIDLog, _doc: any, version: number) => {
 }
 
 
-const testResolveVersion = async (versionId: number) => {
+const testResolveVersion = async (version: number) => {
   const log = readLogFromDisk(logFile);
-  const {did: resolvedDID, doc: resolvedDoc, meta} = await resolveDID(log, {versionId: versionId});
+  const {did: resolvedDID, doc: resolvedDoc, meta} = await resolveDID(log, {versionNumber: version});
 
   if(verboseMode) {
-    console.log(`Resolved DID Document: ${versionId}`, resolvedDID, resolvedDoc);
+    console.log(`Resolved DID Document: ${version}`, resolvedDID, resolvedDoc);
   }
 
   expect(resolvedDoc.id).toBe(resolvedDID);
-  expect(meta.versionId).toBe(versionId);
+  expect(meta.versionId.split('-')[0]).toBe(version.toString());
   expect(resolvedDoc.proof).toBeUndefined();
 }
 
@@ -70,10 +70,10 @@ test("Create DID (2 keys + domain)", async () => {
   expect(newDoc.id).toBe(newDID);
   expect(newLog.length).toBe(1);
   
-  expect(newLog[0][1]).toBe(meta.versionId);
-  expect(newLog[0][2]).toBe(meta.created);
-  expect(newLog[0][3].method).toBe(`did:${METHOD}:1`);
-  expect(newLog[0][3].portable).toBe(true);
+  expect(newLog[0][0]).toBe(meta.versionId);
+  expect(newLog[0][1]).toBe(meta.created);
+  expect(newLog[0][2].method).toBe(`did:${METHOD}:1`);
+  expect(newLog[0][2].portable).toBe(true);
 
   writeFilesToDisk(newLog, newDoc, 1);
 });
@@ -112,7 +112,7 @@ test("Update DID (2 keys, 1 service, change domain)", async () => {
   expect(updatedDoc.service[0].id).toBe(`${did}#whois`);
   expect(updatedDoc.service[0].type).toBe('LinkedVerifiablePresentation');
   expect(updatedDoc.service[0].serviceEndpoint).toContain(`https://example.com/docs/${did.split(':').at(-1)}/whois.json`);
-  expect(meta.versionId).toBe(2);
+  expect(meta.versionId.split('-')[0]).toBe("2");
 
   writeFilesToDisk(updatedLog, updatedDoc, 2);
   did = updatedDID;
@@ -160,7 +160,7 @@ test("Update DID (3 keys, 2 services)", async () => {
   expect(updatedDoc.service[1].id).toBe(`${did}#didcomm`);
   expect(updatedDoc.service[1].type).toBe('DIDCommMessaging');
   expect(updatedDoc.service[1].serviceEndpoint.uri).toContain(`https://example.com/didcomm`);
-  expect(meta.versionId).toBe(3);
+  expect(meta.versionId.split('-')[0]).toBe("3");
 
   writeFilesToDisk(updatedLog, updatedDoc, 3);
   currentAuthKey = nextAuthKey;
@@ -191,7 +191,7 @@ test("Update DID (add alsoKnownAs)", async () => {
     });
   expect(updatedDID).toBe(did);
   expect(updatedDoc.alsoKnownAs).toContain('did:web:example.com')
-  expect(meta.versionId).toBe(4);
+  expect(meta.versionId.split('-')[0]).toBe("4");
 
   writeFilesToDisk(updatedLog, updatedDoc, 4);
   currentAuthKey = nextAuthKey;
@@ -233,7 +233,7 @@ test("Update DID (add external controller)", async () => {
     expect(updatedDoc.authentication[1].slice(-6)).toBe(externalAuthKey.controller.slice(-6));
     expect(updatedDoc.verificationMethod[1].controller).toBe(externalAuthKey.controller);
 
-    expect(meta.versionId).toBe(5);
+    expect(meta.versionId.split('-')[0]).toBe("5");
     
     writeFilesToDisk(updatedLog, updatedDoc, 5);
     currentAuthKey = nextAuthKey;
@@ -272,7 +272,7 @@ test("Update DID (enable prerotate)", async () => {
     expect(meta.prerotate).toBe(true);
     expect(meta.nextKeyHashes).toContain(nextNextKeyHash);
 
-    expect(meta.versionId).toBe(6);
+    expect(meta.versionId.split('-')[0]).toBe("6");
     
     writeFilesToDisk(updatedLog, updatedDoc, 6);
     currentAuthKey = nextAuthKey;
@@ -300,7 +300,7 @@ test("Deactivate DID", async () => {
     expect(updatedDoc.verificationMethod.length).toBe(0);
     expect(meta.deactivated).toBe(true);
 
-    expect(meta.versionId).toBe(7);
+    expect(meta.versionId.split('-')[0]).toBe("7");
     
     writeFilesToDisk(updatedLog, updatedDoc, 7);
 });

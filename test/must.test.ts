@@ -25,7 +25,7 @@ describe("did:tdw normative tests", async () => {
 
   test("Resolve MUST process the DID Log correctly (positive)", async () => {
     const resolved = await resolveDID(newLog1);
-    expect(resolved.meta.versionId).toBe(1);
+    expect(resolved.meta.versionId.split('-')[0]).toBe("1");
   });
 
   test("Resolve MUST process the DID Log correctly (negative)", async () => {
@@ -51,7 +51,7 @@ describe("did:tdw normative tests", async () => {
     });
 
     expect(updatedLog[1][0]).toBeDefined();
-    expect(updatedLog[1][1]).toBe(2);
+    expect(updatedLog[1][0].split('-')[0]).toBe("2");
   });
 
   test("Resolver encountering 'deactivated': true MUST return deactivated in metadata (positive)", async () => {

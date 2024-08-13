@@ -18,8 +18,7 @@ interface DIDOperation {
 }
 
 type DIDLogEntry = [
-  logEntryHash: string,
-  versionId: number,
+  versionId: string,
   timestamp: string,
   params: {
     method?: string,

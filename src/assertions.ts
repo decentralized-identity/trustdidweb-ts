@@ -1,14 +1,16 @@
 import * as ed from '@noble/ed25519';
 import { base58btc } from "multiformats/bases/base58";
-import { bytesToHex, deriveHash } from "./utils";
+import { bytesToHex, createSCID, deriveHash } from "./utils";
 import { canonicalize } from 'json-canonicalize';
 import { createHash } from 'node:crypto';
 
 export const keyIsAuthorized = (verificationMethod: string, updateKeys: string[]) => {
+  if (process.env.IGNORE_ASSERTION_KEY_IS_AUTHORIZED) return true;
   return updateKeys.includes(verificationMethod);
 }
 
 export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: string[]) => {
+  if (process.env.IGNORE_ASSERTION_DOCUMENT_STATE_IS_VALID) return true;
   let i = 0;
   while(i < proofs.length) {
     const proof = proofs[i];
@@ -48,10 +50,12 @@ export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: 
 }
 
 export const hashChainValid = (derivedHash: string, logEntryHash: string) => {
+  if (process.env.IGNORE_ASSERTION_HASH_CHAIN_IS_VALID) return true;
   return derivedHash === logEntryHash;
 }
 
 export const newKeysAreValid = (updateKeys: string[], previousNextKeyHashes: string[], nextKeyHashes: string[], previousPrerotate: boolean, prerotate: boolean) => {
+  if (process.env.IGNORE_ASSERTION_NEW_KEYS_ARE_VALID) return true;
   if (prerotate && nextKeyHashes.length === 0) {
     throw new Error(`nextKeyHashes are required if prerotation enabled`);
   }
@@ -65,4 +69,9 @@ export const newKeysAreValid = (updateKeys: string[], previousNextKeyHashes: str
     }
   }
   return true;
+}
+
+export const scidIsFromHash = async (scid: string, hash: string) => {
+  if (process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH) return true;
+  return scid === await createSCID(hash);
 }
