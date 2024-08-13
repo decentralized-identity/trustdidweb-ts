@@ -1,5 +1,5 @@
 import * as jsonpatch from 'fast-json-patch/index.mjs';
-import { clone, createDate, createDIDDoc, createSCID, createVMID, deriveHash, normalizeVMs } from "./utils";
+import { clone, createDate, createDIDDoc, createSCID, deriveHash, normalizeVMs } from "./utils";
 import { BASE_CONTEXT, METHOD, PLACEHOLDER, PROTOCOL } from './constants';
 import { documentStateIsValid, hashChainValid, newKeysAreValid, scidIsFromHash } from './assertions';
 

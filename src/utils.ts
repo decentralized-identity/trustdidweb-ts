@@ -1,7 +1,8 @@
-import base32 from 'base32';
+import * as base58btc from '@interop/base58-universal'
 import { canonicalize } from 'json-canonicalize';
 import { nanoid } from 'nanoid';
 import { createHash } from 'node:crypto';
+import { sha256 } from 'multiformats/hashes/sha2'
 
 export const clone = (input: any) => JSON.parse(JSON.stringify(input));
 
@@ -33,13 +34,13 @@ export function bytesToHex(bytes: Uint8Array): string {
 }
 
 export const createSCID = async (logEntryHash: string): Promise<string> => {
-  return `${logEntryHash.slice(0, 28)}`;
+  return logEntryHash;
 }
 
 export const deriveHash = (input: any): string => {
   const data = canonicalize(input);
-  const hash = createHash('sha256').update(data).digest();
-  return base32.encode(hash);
+  const encoder = new TextEncoder();
+  return base58btc.encode((sha256.digest(encoder.encode(data)) as any).bytes);
 }
 
 export const createDIDDoc = async (options: CreateDIDInterface): Promise<{doc: DIDDoc}> => {
