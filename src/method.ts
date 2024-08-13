@@ -8,7 +8,7 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
   if (!options.updateKeys) {
     throw new Error('Update keys not supplied')
   }
-  newKeysAreValid(options.updateKeys, [], options.nextKeyHashes ?? [], false, options.prerotate === true); 
+  newKeysAreValid(options.updateKeys, [], options.nextKeyHashes ?? [], false, options.prerotation === true); 
   const controller = `did:${METHOD}:${PLACEHOLDER}:${options.domain}`;
   const createdDate = createDate(options.created);
   let {doc} = await createDIDDoc({...options, controller});
@@ -20,7 +20,7 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
       scid: PLACEHOLDER,
       updateKeys: options.updateKeys,
       portable: options.portable ?? false,
-      ...(options.prerotate ? {prerotate: true, nextKeyHashes: options.nextKeyHashes} : {})
+      ...(options.prerotation ? {prerotation: true, nextKeyHashes: options.nextKeyHashes} : {})
     },
     {value: doc}
   ]
@@ -41,7 +41,7 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
       versionId: initialLogEntry[0],
       created: initialLogEntry[1],
       updated: initialLogEntry[1],
-      ...(options.prerotate ? {prerotate: true, nextKeyHashes: options.nextKeyHashes} : {})
+      ...(options.prerotation ? {prerotation: true, nextKeyHashes: options.nextKeyHashes} : {})
     },
     log: [
       initialLogEntry
@@ -67,7 +67,7 @@ export const resolveDID = async (log: DIDLog, options: {versionNumber?: number, 
   let previousLogEntryHash = '';
   let i = 0;
   let deactivated: boolean | null = null;
-  let prerotate = false;
+  let prerotation = false;
   let nextKeyHashes: string[] = [];
   for (const entry of resolutionLog) {
     const [currentVersionId, timestamp, params, data, ...rest] = entry;
@@ -88,11 +88,11 @@ export const resolveDID = async (log: DIDLog, options: {versionNumber?: number, 
       newDoc = data.value;
       host = newDoc.id.split(':').at(-1);
       scid = params.scid;
-      portable = params.portable;
+      portable = params.portable ?? portable;
       updateKeys = params.updateKeys;
-      prerotate = params.prerotate === true;
+      prerotation = params.prerotation === true;
       nextKeyHashes = params.nextKeyHashes ?? [];
-      newKeysAreValid(updateKeys, [], nextKeyHashes, false, prerotate === true); 
+      newKeysAreValid(updateKeys, [], nextKeyHashes, false, prerotation === true); 
       const logEntryHash = deriveHash(
         [
           PLACEHOLDER,
@@ -116,8 +116,8 @@ export const resolveDID = async (log: DIDLog, options: {versionNumber?: number, 
       } else {
         newDoc = jsonpatch.applyPatch(doc, data.patch, false, false).newDocument;
       }
-      if (params.prerotate === true && (!params.nextKeyHashes || params.nextKeyHashes.length === 0)) {
-        throw new Error("prerotate enabled without nextKeyHashes");
+      if (params.prerotation === true && (!params.nextKeyHashes || params.nextKeyHashes.length === 0)) {
+        throw new Error("prerotation enabled without nextKeyHashes");
       }
       const newHost = newDoc.id.split(':').at(-1);
       if (!portable && newHost !== host) {
@@ -125,7 +125,7 @@ export const resolveDID = async (log: DIDLog, options: {versionNumber?: number, 
       } else if (newHost !== host) {
         host = newHost;
       }
-      newKeysAreValid(params.updateKeys ?? [], nextKeyHashes, params.nextKeyHashes ?? [], prerotate, params.prerotate === true);
+      newKeysAreValid(params.updateKeys ?? [], nextKeyHashes, params.nextKeyHashes ?? [], prerotation, params.prerotation === true);
       if (!hashChainValid(`${i+1}-${entryHash}`, entry[0])) {
         throw new Error(`Hash chain broken at '${versionId}'`);
       }
@@ -139,8 +139,8 @@ export const resolveDID = async (log: DIDLog, options: {versionNumber?: number, 
       if (params.deactivated === true) {
         deactivated = true;
       }
-      if (params.prerotate === true) {
-        prerotate = true;
+      if (params.prerotation === true) {
+        prerotation = true;
       }
       if (params.nextKeyHashes) {
         nextKeyHashes = params.nextKeyHashes;
@@ -172,7 +172,7 @@ export const resolveDID = async (log: DIDLog, options: {versionNumber?: number, 
       updated,
       previousLogEntryHash,
       scid,
-      prerotate,
+      prerotation,
       portable,
       nextKeyHashes,
       ...(deactivated ? {deactivated}: {})
@@ -183,10 +183,10 @@ export const resolveDID = async (log: DIDLog, options: {versionNumber?: number, 
 export const updateDID = async (options: UpdateDIDInterface): Promise<{did: string, doc: any, meta: any, log: DIDLog}> => {
   const {
     log, updateKeys, context, verificationMethods, services, alsoKnownAs,
-    controller, domain, nextKeyHashes, prerotate
+    controller, domain, nextKeyHashes, prerotation
   } = options;
   let {did, doc, meta} = await resolveDID(log);
-  newKeysAreValid(updateKeys ?? [], meta.nextKeyHashes ?? [], nextKeyHashes ?? [], meta.prerotate === true, prerotate === true);
+  newKeysAreValid(updateKeys ?? [], meta.nextKeyHashes ?? [], nextKeyHashes ?? [], meta.prerotation === true, prerotation === true);
 
   if (domain) {
     if (!meta.portable) {
@@ -212,7 +212,7 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
     meta.updated,
     {
       ...(updateKeys ? {updateKeys} : {}),
-      ...(prerotate ? {prerotate: true, nextKeyHashes} : {})
+      ...(prerotation ? {prerotation: true, nextKeyHashes} : {})
     },
     {patch: clone(patch)}
   ];
@@ -228,7 +228,7 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
       created: meta.created,
       updated: meta.updated,
       previousLogEntryHash: meta.previousLogEntryHash,
-      ...(prerotate ? {prerotate: true, nextKeyHashes} : {})
+      ...(prerotation ? {prerotation: true, nextKeyHashes} : {})
     },
     log: [
       ...clone(log),

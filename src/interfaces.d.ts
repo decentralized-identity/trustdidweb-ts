@@ -24,7 +24,7 @@ type DIDLogEntry = [
     method?: string,
     scid?: string,
     updateKeys?: string[],
-    prerotate?: boolean,
+    prerotation?: boolean,
     nextKeyHashes?: string[],
     portable?: boolean
   },
@@ -57,7 +57,7 @@ interface CreateDIDInterface {
   context?: string | string[];
   verificationMethods?: VerificationMethod[];
   created?: Date;
-  prerotate?: boolean;
+  prerotation?: boolean;
   nextKeyHashes?: string[];
   portable?: boolean;
 }
@@ -80,7 +80,7 @@ interface UpdateDIDInterface {
   domain?: string;
   updated?: Date | string;
   deactivated?: boolean;
-  prerotate?: boolean;
+  prerotation?: boolean;
   nextKeyHashes?: string[];
 }
 

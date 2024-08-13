@@ -53,7 +53,7 @@ test("Create DID (2 keys + domain)", async () => {
   const {did: newDID, doc: newDoc, meta, log: newLog} = await createDID({
     domain: 'example.com',
     signer: createSigner(currentAuthKey!),
-    updateKeys: [`did:key:${currentAuthKey!.publicKeyMultibase}`],
+    updateKeys: [currentAuthKey!.publicKeyMultibase!],
     portable: true,
     verificationMethods: [
       currentAuthKey!,
@@ -91,7 +91,7 @@ test("Update DID (2 keys, 1 service, change domain)", async () => {
     await updateDID({
       log: didLog,
       signer: createSigner(currentAuthKey!),
-      updateKeys: [`did:key:${nextAuthKey.publicKeyMultibase}`],
+      updateKeys: [nextAuthKey.publicKeyMultibase!],
       context,
       domain: 'localhost%3A8000',
       verificationMethods: [
@@ -132,7 +132,7 @@ test("Update DID (3 keys, 2 services)", async () => {
     await updateDID({
       log: didLog,
       signer: createSigner(currentAuthKey!),
-      updateKeys: [`did:key:${nextAuthKey.publicKeyMultibase}`],
+      updateKeys: [nextAuthKey.publicKeyMultibase!],
       context: [...doc['@context'], 'https://didcomm.org/messaging/v2'],
       verificationMethods: [
         nextAuthKey,
@@ -179,7 +179,7 @@ test("Update DID (add alsoKnownAs)", async () => {
     await updateDID({
       log: didLog,
       signer: createSigner(currentAuthKey!),
-      updateKeys: [`did:key:${nextAuthKey.publicKeyMultibase}`],
+      updateKeys: [nextAuthKey.publicKeyMultibase!],
       context: doc['@context'],
       verificationMethods: [
         nextAuthKey,
@@ -206,14 +206,14 @@ test("Update DID (add external controller)", async () => {
   const {doc} = await resolveDID(didLog);
   const nextAuthKey = await generateEd25519VerificationMethod('authentication');
   const externalAuthKey = await generateEd25519VerificationMethod('authentication');
-  externalAuthKey.controller = `did:key:${externalAuthKey.publicKeyMultibase}`;
+  externalAuthKey.controller = externalAuthKey.publicKeyMultibase;
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
       log: didLog,
       signer: createSigner(currentAuthKey!),
       updateKeys: [
-        `did:key:${nextAuthKey.publicKeyMultibase}`,
-        `did:key:${externalAuthKey.publicKeyMultibase}`
+        nextAuthKey.publicKeyMultibase!,
+        externalAuthKey.publicKeyMultibase!
       ],
       controller: [
         ...(Array.isArray(doc.controller) ? doc.controller : [doc.controller]),
@@ -230,7 +230,7 @@ test("Update DID (add external controller)", async () => {
     didLog = [...updatedLog];
     expect(updatedDID).toBe(did);
     expect(updatedDoc.controller).toContain(externalAuthKey.controller);
-    expect(updatedDoc.authentication[1].slice(-6)).toBe(externalAuthKey.controller.slice(-6));
+    expect(updatedDoc.authentication[1].slice(-6)).toBe(externalAuthKey.controller!.slice(-6));
     expect(updatedDoc.verificationMethod[1].controller).toBe(externalAuthKey.controller);
 
     expect(meta.versionId.split('-')[0]).toBe("5");
@@ -243,21 +243,21 @@ test("Resolve DID version 5", async () => {
   await testResolveVersion(5);
 });
 
-test("Update DID (enable prerotate)", async () => {
+test("Update DID (enable prerotation)", async () => {
   let didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
 
   const nextAuthKey = await generateEd25519VerificationMethod('authentication');
   const nextNextAuthKey = await generateEd25519VerificationMethod('authentication');
-  const nextNextKeyHash = deriveHash(`did:key:${nextNextAuthKey.publicKeyMultibase}`);
+  const nextNextKeyHash = deriveHash(nextNextAuthKey.publicKeyMultibase);
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
       log: didLog,
       signer: createSigner(currentAuthKey!),
       updateKeys: [
-        `did:key:${nextAuthKey.publicKeyMultibase}`
+        nextAuthKey.publicKeyMultibase!
       ],
-      prerotate: true,
+      prerotation: true,
       nextKeyHashes: [nextNextKeyHash],
       context: doc['@context'],
       verificationMethods: [
@@ -269,7 +269,7 @@ test("Update DID (enable prerotate)", async () => {
     didLog = [...updatedLog];
     expect(updatedDID).toBe(did);
     expect(updatedDoc.controller).toContain(did)
-    expect(meta.prerotate).toBe(true);
+    expect(meta.prerotation).toBe(true);
     expect(meta.nextKeyHashes).toContain(nextNextKeyHash);
 
     expect(meta.versionId.split('-')[0]).toBe("6");

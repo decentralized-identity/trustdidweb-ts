@@ -4,9 +4,9 @@ import { bytesToHex, createSCID, deriveHash } from "./utils";
 import { canonicalize } from 'json-canonicalize';
 import { createHash } from 'node:crypto';
 
-export const keyIsAuthorized = (verificationMethod: string, updateKeys: string[]) => {
+export const keyIsAuthorized = (key: string, updateKeys: string[]) => {
   if (process.env.IGNORE_ASSERTION_KEY_IS_AUTHORIZED) return true;
-  return updateKeys.includes(verificationMethod);
+  return updateKeys.includes(key);
 }
 
 export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: string[]) => {
@@ -14,7 +14,7 @@ export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: 
   let i = 0;
   while(i < proofs.length) {
     const proof = proofs[i];
-    if (!keyIsAuthorized(proof.verificationMethod.split('#')[0], updateKeys)) {
+    if (!keyIsAuthorized(proof.verificationMethod.split('#')[0].split('did:key:').at(-1), updateKeys)) {
       throw new Error(`key ${proof.verificationMethod} is not authorized to update.`)
     }
     if (proof.type !== 'DataIntegrityProof') {
@@ -54,12 +54,12 @@ export const hashChainValid = (derivedHash: string, logEntryHash: string) => {
   return derivedHash === logEntryHash;
 }
 
-export const newKeysAreValid = (updateKeys: string[], previousNextKeyHashes: string[], nextKeyHashes: string[], previousPrerotate: boolean, prerotate: boolean) => {
+export const newKeysAreValid = (updateKeys: string[], previousNextKeyHashes: string[], nextKeyHashes: string[], previousPrerotation: boolean, prerotation: boolean) => {
   if (process.env.IGNORE_ASSERTION_NEW_KEYS_ARE_VALID) return true;
-  if (prerotate && nextKeyHashes.length === 0) {
+  if (prerotation && nextKeyHashes.length === 0) {
     throw new Error(`nextKeyHashes are required if prerotation enabled`);
   }
-  if(previousPrerotate) {
+  if(previousPrerotation) {
     const inNextKeyHashes = updateKeys.reduce((result, key) => {
       const hashedKey = deriveHash(key);
       return result && previousNextKeyHashes.includes(hashedKey);

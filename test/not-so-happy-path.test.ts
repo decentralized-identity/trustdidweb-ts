@@ -8,7 +8,7 @@ test("Update with wrong key fails resolution", async () => {
   const assertionKey = await generateEd25519VerificationMethod('assertionMethod');
   const {doc: newDoc, log: newLog} = await createDID({
     domain: 'example.com',
-    updateKeys: [`did:key:${authKey.publicKeyMultibase}`],
+    updateKeys: [authKey.publicKeyMultibase!],
     signer: createSigner(authKey as any),
     verificationMethods: [
       authKey as any,

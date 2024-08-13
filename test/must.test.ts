@@ -14,7 +14,7 @@ describe("did:tdw normative tests", async () => {
     const { doc, log } = await createDID({
       domain: 'example.com',
       signer: createSigner(authKey1),
-      updateKeys: [`did:key:${authKey1.publicKeyMultibase}`],
+      updateKeys: [authKey1.publicKeyMultibase!],
       verificationMethods: [authKey1],
       created: new Date('2024-01-01T08:32:55Z')
     });
@@ -44,7 +44,7 @@ describe("did:tdw normative tests", async () => {
     const { doc: updatedDoc, log: updatedLog } = await updateDID({
       log: newLog1,
       signer: createSigner(authKey2),
-      updateKeys: [`did:key:${authKey2.publicKeyMultibase}`],
+      updateKeys: [authKey2.publicKeyMultibase!],
       context: newDoc1['@context'],
       verificationMethods: [authKey2],
       updated: new Date('2024-02-01T08:32:55Z')

@@ -24,7 +24,7 @@ beforeAll(async () => {
   const {doc: newDoc1, log: newLog1} = await createDID({
     domain: 'example.com',
     signer: createSigner(authKey1),
-    updateKeys: [`did:key:${authKey1.publicKeyMultibase}`],
+    updateKeys: [authKey1.publicKeyMultibase!],
     verificationMethods: [authKey1],
     created: new Date('2021-01-01T08:32:55Z')
   });
@@ -32,7 +32,7 @@ beforeAll(async () => {
   const {doc: newDoc2, log: newLog2} = await updateDID({
     log: newLog1,
     signer: createSigner(authKey1),
-    updateKeys: [`did:key:${authKey2.publicKeyMultibase}`],
+    updateKeys: [authKey2.publicKeyMultibase!],
     context: newDoc1['@context'],
     verificationMethods: [authKey2],
     updated: new Date('2021-02-01T08:32:55Z')
@@ -41,7 +41,7 @@ beforeAll(async () => {
   const {doc: newDoc3, log: newLog3} = await updateDID({
     log: newLog2,
     signer: createSigner(authKey2),
-    updateKeys: [`did:key:${authKey3.publicKeyMultibase}`],
+    updateKeys: [authKey3.publicKeyMultibase!],
     context: newDoc2['@context'],
     verificationMethods: [authKey3],
     updated: new Date('2021-03-01T08:32:55Z')
@@ -50,7 +50,7 @@ beforeAll(async () => {
   const {doc: newDoc4, log: newLog4} = await updateDID({
     log: newLog3,
     signer: createSigner(authKey3),
-    updateKeys: [`did:key:${authKey4.publicKeyMultibase}`],
+    updateKeys: [authKey4.publicKeyMultibase!],
     context: newDoc3['@context'],
     verificationMethods: [authKey4],
     updated: new Date('2021-04-01T08:32:55Z')
@@ -61,7 +61,7 @@ beforeAll(async () => {
   nonPortableDID = await createDID({
     domain: 'example.com',
     signer: createSigner(authKey1),
-    updateKeys: [`did:key:${authKey1.publicKeyMultibase}`],
+    updateKeys: [authKey1.publicKeyMultibase!],
     verificationMethods: [authKey1],
     created: new Date('2021-01-01T08:32:55Z'),
     portable: false // Set portable to false
@@ -70,7 +70,7 @@ beforeAll(async () => {
   portableDID = await createDID({
     domain: 'example.com',
     signer: createSigner(authKey2),
-    updateKeys: [`did:key:${authKey2.publicKeyMultibase}`],
+    updateKeys: [authKey2.publicKeyMultibase!],
     verificationMethods: [authKey2],
     created: new Date('2021-01-01T08:32:55Z'),
     portable: true // Set portable to true
@@ -113,9 +113,9 @@ test("Require `nextKeyHashes` if prerotation enabled in Create", async () => {
     const {did, log} = await createDID({
         domain: "example.com",
         signer: createSigner(authKey1),
-        updateKeys: [`did:key:${authKey1.publicKeyMultibase}`],
+        updateKeys: [authKey1.publicKeyMultibase!],
         verificationMethods: [authKey1],
-        prerotate: true
+        prerotation: true
       });
     } catch(e) {
       err = e;
@@ -130,8 +130,8 @@ test("Require `nextKeyHashes` if prerotation enabled in Read (when enabled in Cr
     [ "1-5v2bjwgmeqpnuu669zd7956w1w14", "2024-06-06T08:23:06Z", {
         method: "did:tdw:0.3",
         scid: "5v2bjwgmeqpnuu669zd7956w1w14",
-        updateKeys: [ "did:key:z6Mkr2D4ixckmQx8tAVvXEhMuaMhzahxe61qJt7G9vYyiXiJ" ],
-        prerotate: true,
+        updateKeys: [ "z6Mkr2D4ixckmQx8tAVvXEhMuaMhzahxe61qJt7G9vYyiXiJ" ],
+        prerotation: true,
       }, {
         value: {
           "@context": [ "https://www.w3.org/ns/did/v1", "https://w3id.org/security/multikey/v1"
@@ -176,7 +176,7 @@ test("Require `nextKeyHashes` if prerotation enabled in Update", async () => {
   const {did, log} = await createDID({
     domain: "example.com",
     signer: createSigner(authKey1),
-    updateKeys: [`did:key:${authKey1.publicKeyMultibase}`],
+    updateKeys: [authKey1.publicKeyMultibase!],
     verificationMethods: [authKey1]
   });
   
@@ -184,9 +184,9 @@ test("Require `nextKeyHashes` if prerotation enabled in Update", async () => {
     const {log: updatedLog} = await updateDID({
       log,
       signer: createSigner(authKey1),
-      updateKeys: [`did:key:${authKey1.publicKeyMultibase}`],
+      updateKeys: [authKey1.publicKeyMultibase!],
       verificationMethods: [authKey1],
-      prerotate: true
+      prerotation: true
     });
   } catch(e) {
     err = e;
@@ -200,7 +200,7 @@ test("Require `nextKeyHashes` if prerotation enabled in Read (when enabled in Up
   let err: any;
   const mockLog = createMockDIDLog([
     ['1-mock-hash', createDate(), { method: "did:tdw:0.3", scid: "test-scid" }, { value: { id: "did:tdw:example.com:test-scid" } } ],
-    ['2-mock-hash', createDate().toString(), {prerotate: true}, { patch: [] } ],
+    ['2-mock-hash', createDate().toString(), {prerotation: true}, { patch: [] } ],
     ['3-mock-hash', createDate().toString(), {}, { patch: [] } ],
   ]);
   try {
@@ -211,7 +211,7 @@ test("Require `nextKeyHashes` if prerotation enabled in Read (when enabled in Up
   }
 
   expect(err).toBeDefined();
-  expect(err.message).toContain('prerotate enabled without nextKeyHashes')
+  expect(err.message).toContain('prerotation enabled without nextKeyHashes')
   delete process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH;
 });
 
@@ -222,17 +222,17 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Create", asy
     const {did, log} = await createDID({
       domain: "example.com",
       signer: createSigner(authKey1),
-      updateKeys: [`did:key:${authKey1.publicKeyMultibase}`],
+      updateKeys: [authKey1.publicKeyMultibase!],
       verificationMethods: [authKey1],
-      prerotate: true,
-      nextKeyHashes: [deriveHash(`did:key:${authKey2.publicKeyMultibase}`)]
+      prerotation: true,
+      nextKeyHashes: [deriveHash(authKey2.publicKeyMultibase)]
     });
     const {log: updatedLog} = await updateDID({
       log,
       signer: createSigner(authKey1),
-      updateKeys: [`did:key:${authKey3.publicKeyMultibase}`],
+      updateKeys: [authKey3.publicKeyMultibase!],
       verificationMethods: [authKey3],
-      nextKeyHashes: [deriveHash(`did:key:${authKey3.publicKeyMultibase}`)]
+      nextKeyHashes: [deriveHash(authKey3.publicKeyMultibase)]
     });
   } catch(e) {
     err = e;
@@ -246,7 +246,7 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when e
   let err: any;
   process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH = "true";
   const mockLog = createMockDIDLog([
-    ['1-mock-hash', createDate(), { method: "did:tdw:0.3", scid: "test-scid", prerotate: true, nextKeyHashes: ['213123123']}, { value: { id: "did:tdw:example.com:test-scid" } } ],
+    ['1-mock-hash', createDate(), { method: "did:tdw:0.3", scid: "test-scid", prerotation: true, nextKeyHashes: ['213123123']}, { value: { id: "did:tdw:example.com:test-scid" } } ],
     ['2-mock-hash', createDate().toString(), {updateKeys: ['1213'], nextKeyHashes: ['123']}, { patch: [] } ]
   ]);
   try {
@@ -267,23 +267,23 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Update", asy
     const {did, log} = await createDID({
       domain: "example.com",
       signer: createSigner(authKey1),
-      updateKeys: [`did:key:${authKey1.publicKeyMultibase}`],
+      updateKeys: [authKey1.publicKeyMultibase!],
       verificationMethods: [authKey1]
     });
     const {log: updatedLog} = await updateDID({
       log,
       signer: createSigner(authKey1),
-      updateKeys: [`did:key:${authKey2.publicKeyMultibase}`],
+      updateKeys: [authKey2.publicKeyMultibase!],
       verificationMethods: [authKey3],
-      prerotate: true,
-      nextKeyHashes: [deriveHash(`did:key:${authKey3.publicKeyMultibase}`)]
+      prerotation: true,
+      nextKeyHashes: [deriveHash(authKey3.publicKeyMultibase)]
     });
     const {log: updatedLog2} = await updateDID({
       log: updatedLog,
       signer: createSigner(authKey2),
-      updateKeys: [`did:key:${authKey4.publicKeyMultibase}`],
+      updateKeys: [authKey4.publicKeyMultibase!],
       verificationMethods: [authKey3],
-      nextKeyHashes: [`did:key:${authKey1.publicKeyMultibase}`]
+      nextKeyHashes: [authKey1.publicKeyMultibase!]
     });
   } catch(e) {
     err = e;
@@ -298,7 +298,7 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when e
   process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH = "true";
   const mockLog = createMockDIDLog([
     ['1-mock-hash', createDate(), { method: "did:tdw:0.3", scid: "test-scid" }, { value: { id: "did:tdw:example.com:test-scid" } } ],
-    ['2-mock-hash', createDate().toString(), {prerotate: true, nextKeyHashes: ['1231']}, { patch: [] } ],
+    ['2-mock-hash', createDate().toString(), {prerotation: true, nextKeyHashes: ['1231']}, { patch: [] } ],
     ['3-mock-hash', createDate().toString(), {updateKeys: ['12312312312321']}, { patch: [] } ],
   ]);
   try {
@@ -330,12 +330,12 @@ test("DID log with portable false should not resolve if moved", async () => {
     const newEntry = [
       `${nonPortableDID.log.length + 1}-test`, // Increment the version
       newTimestamp,
-      { updateKeys: [`did:key:${authKey1.publicKeyMultibase}`] },
+      { updateKeys: [authKey1.publicKeyMultibase]},
       { patch },
       {
         type: "DataIntegrityProof",
         cryptosuite: "eddsa-jcs-2022",
-        verificationMethod: `did:key:${authKey1.publicKeyMultibase}`,
+        verificationMethod: authKey1.publicKeyMultibase,
         created: newTimestamp,
         proofPurpose: "authentication",
         challenge: '1-test',
@@ -365,7 +365,7 @@ test("updateDID should not allow moving a non-portable DID", async () => {
     
     const updateOptions = {
       log: clone(nonPortableDID.log),
-      updateKeys: [`did:key:${authKey1.publicKeyMultibase}`],
+      updateKeys: [authKey1.publicKeyMultibase!],
       domain: newDomain,
       updated: newTimestamp,
       signer: async (doc: any, challenge: string) => ({
