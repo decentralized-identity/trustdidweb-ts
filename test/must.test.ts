@@ -1,9 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
-import { readKeysFromDisk, readLogFromDisk, writeLogToDisk } from "./utils";
 import { createDID, deactivateDID, resolveDID, updateDID } from "../src/method";
-import { createSigner } from "../src/signing";
+import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 
-let availableKeys: { ed25519: (VerificationMethod | null)[]; x25519: (VerificationMethod | null)[] };
 
 describe("did:tdw normative tests", async () => {
   let newDoc1: any;
@@ -11,15 +9,12 @@ describe("did:tdw normative tests", async () => {
   let authKey1: VerificationMethod;
 
   beforeAll(async () => {
-    const { keys } = readKeysFromDisk();
-    availableKeys = JSON.parse(keys);
-
-    authKey1 = { type: 'authentication' as const, ...availableKeys.ed25519.shift() };
+    authKey1 = await generateEd25519VerificationMethod('authentication');
 
     const { doc, log } = await createDID({
       domain: 'example.com',
       signer: createSigner(authKey1),
-      updateKeys: [`did:key:${authKey1.publicKeyMultibase}`],
+      updateKeys: [authKey1.publicKeyMultibase!],
       verificationMethods: [authKey1],
       created: new Date('2024-01-01T08:32:55Z')
     });
@@ -30,7 +25,7 @@ describe("did:tdw normative tests", async () => {
 
   test("Resolve MUST process the DID Log correctly (positive)", async () => {
     const resolved = await resolveDID(newLog1);
-    expect(resolved.meta.versionId).toBe(1);
+    expect(resolved.meta.versionId.split('-')[0]).toBe("1");
   });
 
   test("Resolve MUST process the DID Log correctly (negative)", async () => {
@@ -45,18 +40,18 @@ describe("did:tdw normative tests", async () => {
   });
 
   test("Update implementation MUST generate a correct DID Entry (positive)", async () => {
-    const authKey2 = { type: 'authentication' as const, ...availableKeys.ed25519.shift() };
+    const authKey2 = await generateEd25519VerificationMethod('authentication');
     const { doc: updatedDoc, log: updatedLog } = await updateDID({
       log: newLog1,
       signer: createSigner(authKey2),
-      updateKeys: [`did:key:${authKey2.publicKeyMultibase}`],
+      updateKeys: [authKey2.publicKeyMultibase!],
       context: newDoc1['@context'],
       verificationMethods: [authKey2],
       updated: new Date('2024-02-01T08:32:55Z')
     });
 
     expect(updatedLog[1][0]).toBeDefined();
-    expect(updatedLog[1][1]).toBe(2);
+    expect(updatedLog[1][0].split('-')[0]).toBe("2");
   });
 
   test("Resolver encountering 'deactivated': true MUST return deactivated in metadata (positive)", async () => {

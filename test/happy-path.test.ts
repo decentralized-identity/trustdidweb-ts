@@ -1,14 +1,13 @@
 import { test, expect, beforeAll } from "bun:test";
 import { createDID, deactivateDID, resolveDID, updateDID } from "../src/method";
 import fs from 'node:fs';
-import { readLogFromDisk, readKeysFromDisk } from "./utils";
+import { readLogFromDisk } from "./utils";
 import { createVMID, deriveHash } from "../src/utils";
 import { METHOD } from "../src/constants";
-import { createSigner } from "../src/signing";
+import { createSigner, generateEd25519VerificationMethod, generateX25519VerificationMethod } from "../src/cryptography";
 
 let docFile: string, logFile: string;
 let did: string;
-let availableKeys: { ed25519: (VerificationMethod | null)[]; x25519: (VerificationMethod | null)[]};
 let currentAuthKey: VerificationMethod | null = null;
 
 const verboseMode = Bun.env['LOG_RESOLVES'] === 'true';
@@ -18,7 +17,7 @@ const logFilePath =
     `./test/logs/${id}/did${verboseMode && version ? '.' + version : ''}.jsonl`;
 
 const writeFilesToDisk = (_log: DIDLog, _doc: any, version: number) => {
-  let id = _doc.id.split(':').at(-1);
+  let id = _doc.id.split(':').at(-2);
   if (verboseMode) {
     id = 'test-run';
   }
@@ -33,33 +32,32 @@ const writeFilesToDisk = (_log: DIDLog, _doc: any, version: number) => {
 }
 
 
-const testResolveVersion = async (versionId: number) => {
+const testResolveVersion = async (version: number) => {
   const log = readLogFromDisk(logFile);
-  const {did: resolvedDID, doc: resolvedDoc, meta} = await resolveDID(log, {versionId: versionId});
+  const {did: resolvedDID, doc: resolvedDoc, meta} = await resolveDID(log, {versionNumber: version});
 
   if(verboseMode) {
-    console.log(`Resolved DID Document: ${versionId}`, resolvedDID, resolvedDoc);
+    console.log(`Resolved DID Document: ${version}`, resolvedDID, resolvedDoc);
   }
 
   expect(resolvedDoc.id).toBe(resolvedDID);
-  expect(meta.versionId).toBe(versionId);
+  expect(meta.versionId.split('-')[0]).toBe(version.toString());
   expect(resolvedDoc.proof).toBeUndefined();
 }
 
 beforeAll(async () => {
-  const {keys} = readKeysFromDisk();
-  availableKeys = JSON.parse(keys);
-  currentAuthKey = {type: 'authentication', ...availableKeys.ed25519.shift()};
+  currentAuthKey = await generateEd25519VerificationMethod('authentication');
 });
 
 test("Create DID (2 keys + domain)", async () => {
   const {did: newDID, doc: newDoc, meta, log: newLog} = await createDID({
     domain: 'example.com',
     signer: createSigner(currentAuthKey!),
-    updateKeys: [`did:key:${currentAuthKey!.publicKeyMultibase}`],
+    updateKeys: [currentAuthKey!.publicKeyMultibase!],
+    portable: true,
     verificationMethods: [
       currentAuthKey!,
-      {type: 'assertionMethod', ...availableKeys.ed25519.shift()},
+      await generateEd25519VerificationMethod('assertionMethod')
     ]});
   did = newDID;
   currentAuthKey!.controller = did;
@@ -67,14 +65,15 @@ test("Create DID (2 keys + domain)", async () => {
 
   expect(newDID).toContain('example.com');
   expect(newDID.split(':').length).toBe(4);
-  expect(newDID.split(':').at(-1)?.length).toBe(28);
+  expect(newDID.split(':').at(-2)?.length).toBe(46);
   expect(newDoc.verificationMethod.length).toBe(2);
   expect(newDoc.id).toBe(newDID);
   expect(newLog.length).toBe(1);
   
-  expect(newLog[0][1]).toBe(meta.versionId);
-  expect(newLog[0][2]).toBe(meta.created);
-  expect(newLog[0][3].method).toBe(`did:${METHOD}:1`);
+  expect(newLog[0][0]).toBe(meta.versionId);
+  expect(newLog[0][1]).toBe(meta.created);
+  expect(newLog[0][2].method).toBe(`did:${METHOD}:0.3`);
+  expect(newLog[0][2].portable).toBe(true);
 
   writeFilesToDisk(newLog, newDoc, 1);
 });
@@ -84,7 +83,7 @@ test("Resolve DID version 1", async () => {
 });
 
 test("Update DID (2 keys, 1 service, change domain)", async () => {
-  const nextAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
+  const nextAuthKey = await generateEd25519VerificationMethod('authentication');
   const didLog = readLogFromDisk(logFile);
   const context = ["https://identity.foundation/linked-vp/contexts/v1"];
 
@@ -92,12 +91,12 @@ test("Update DID (2 keys, 1 service, change domain)", async () => {
     await updateDID({
       log: didLog,
       signer: createSigner(currentAuthKey!),
-      updateKeys: [`did:key:${nextAuthKey.publicKeyMultibase}`],
+      updateKeys: [nextAuthKey.publicKeyMultibase!],
       context,
-      domain: 'migrated.example.com',
+      domain: 'localhost%3A8000',
       verificationMethods: [
         nextAuthKey,
-        {type: 'assertionMethod', ...availableKeys.ed25519.shift()},
+        await generateEd25519VerificationMethod('assertionMethod')
       ],
       services: [
         {
@@ -108,12 +107,12 @@ test("Update DID (2 keys, 1 service, change domain)", async () => {
       ]
     });
 
-  expect(updatedDID).toContain('migrated.example.com');
+  expect(updatedDID).toContain('localhost%3A8000');
   expect(updatedDoc.service.length).toBe(1);
   expect(updatedDoc.service[0].id).toBe(`${did}#whois`);
   expect(updatedDoc.service[0].type).toBe('LinkedVerifiablePresentation');
   expect(updatedDoc.service[0].serviceEndpoint).toContain(`https://example.com/docs/${did.split(':').at(-1)}/whois.json`);
-  expect(meta.versionId).toBe(2);
+  expect(meta.versionId.split('-')[0]).toBe("2");
 
   writeFilesToDisk(updatedLog, updatedDoc, 2);
   did = updatedDID;
@@ -125,7 +124,7 @@ test("Resolve DID version 2", async () => {
 });
 
 test("Update DID (3 keys, 2 services)", async () => {
-  const nextAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
+  const nextAuthKey = await generateEd25519VerificationMethod('authentication');
   const didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
 
@@ -133,12 +132,12 @@ test("Update DID (3 keys, 2 services)", async () => {
     await updateDID({
       log: didLog,
       signer: createSigner(currentAuthKey!),
-      updateKeys: [`did:key:${nextAuthKey.publicKeyMultibase}`],
+      updateKeys: [nextAuthKey.publicKeyMultibase!],
       context: [...doc['@context'], 'https://didcomm.org/messaging/v2'],
       verificationMethods: [
         nextAuthKey,
-        {type: 'assertionMethod', ...availableKeys.ed25519.shift()},
-        {type: 'keyAgreement', ...availableKeys.x25519.shift()}
+        await generateEd25519VerificationMethod('assertionMethod'),
+        await generateX25519VerificationMethod('keyAgreement')
       ],
       services: [
         ...doc.service,
@@ -161,7 +160,7 @@ test("Update DID (3 keys, 2 services)", async () => {
   expect(updatedDoc.service[1].id).toBe(`${did}#didcomm`);
   expect(updatedDoc.service[1].type).toBe('DIDCommMessaging');
   expect(updatedDoc.service[1].serviceEndpoint.uri).toContain(`https://example.com/didcomm`);
-  expect(meta.versionId).toBe(3);
+  expect(meta.versionId.split('-')[0]).toBe("3");
 
   writeFilesToDisk(updatedLog, updatedDoc, 3);
   currentAuthKey = nextAuthKey;
@@ -172,7 +171,7 @@ test("Resolve DID version 3", async () => {
 });
 
 test("Update DID (add alsoKnownAs)", async () => {
-  const nextAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
+  const nextAuthKey = await generateEd25519VerificationMethod('authentication');
   const didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
 
@@ -180,19 +179,19 @@ test("Update DID (add alsoKnownAs)", async () => {
     await updateDID({
       log: didLog,
       signer: createSigner(currentAuthKey!),
-      updateKeys: [`did:key:${nextAuthKey.publicKeyMultibase}`],
+      updateKeys: [nextAuthKey.publicKeyMultibase!],
       context: doc['@context'],
       verificationMethods: [
         nextAuthKey,
-        {type: 'assertionMethod', ...availableKeys.ed25519.shift()},
-        {type: 'keyAgreement', ...availableKeys.x25519.shift()},
+        await generateEd25519VerificationMethod('assertionMethod'),
+        await generateX25519VerificationMethod('keyAgreement')
       ],
       services: doc.service,
       alsoKnownAs: ['did:web:example.com']
     });
   expect(updatedDID).toBe(did);
   expect(updatedDoc.alsoKnownAs).toContain('did:web:example.com')
-  expect(meta.versionId).toBe(4);
+  expect(meta.versionId.split('-')[0]).toBe("4");
 
   writeFilesToDisk(updatedLog, updatedDoc, 4);
   currentAuthKey = nextAuthKey;
@@ -205,21 +204,16 @@ test("Resolve DID version 4", async () => {
 test("Update DID (add external controller)", async () => {
   let didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
-  if (availableKeys.ed25519.length === 0) {
-    const {keys} = readKeysFromDisk();
-    availableKeys = JSON.parse(keys);
-  }
-  const {publicKeyMultibase, secretKeyMultibase} = availableKeys.ed25519.shift()!;
-  const nextAuthKey = {type: 'authentication' as const, publicKeyMultibase, secretKeyMultibase};
-  const externalAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
-  externalAuthKey.controller = `did:key:${externalAuthKey.publicKeyMultibase}`;
+  const nextAuthKey = await generateEd25519VerificationMethod('authentication');
+  const externalAuthKey = await generateEd25519VerificationMethod('authentication');
+  externalAuthKey.controller = externalAuthKey.publicKeyMultibase;
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
       log: didLog,
       signer: createSigner(currentAuthKey!),
       updateKeys: [
-        `did:key:${nextAuthKey.publicKeyMultibase}`,
-        `did:key:${externalAuthKey.publicKeyMultibase}`
+        nextAuthKey.publicKeyMultibase!,
+        externalAuthKey.publicKeyMultibase!
       ],
       controller: [
         ...(Array.isArray(doc.controller) ? doc.controller : [doc.controller]),
@@ -236,10 +230,10 @@ test("Update DID (add external controller)", async () => {
     didLog = [...updatedLog];
     expect(updatedDID).toBe(did);
     expect(updatedDoc.controller).toContain(externalAuthKey.controller);
-    expect(updatedDoc.authentication[1].slice(-6)).toBe(externalAuthKey.controller.slice(-6));
+    expect(updatedDoc.authentication[1].slice(-6)).toBe(externalAuthKey.controller!.slice(-6));
     expect(updatedDoc.verificationMethod[1].controller).toBe(externalAuthKey.controller);
 
-    expect(meta.versionId).toBe(5);
+    expect(meta.versionId.split('-')[0]).toBe("5");
     
     writeFilesToDisk(updatedLog, updatedDoc, 5);
     currentAuthKey = nextAuthKey;
@@ -249,25 +243,21 @@ test("Resolve DID version 5", async () => {
   await testResolveVersion(5);
 });
 
-test("Update DID (enable prerotate)", async () => {
+test("Update DID (enable prerotation)", async () => {
   let didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
-  if (availableKeys.ed25519.length === 0) {
-    const {keys} = readKeysFromDisk();
-    availableKeys = JSON.parse(keys);
-  }
 
-  const nextAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
-  const nextNextAuthKey = {type: 'authentication' as const, ...availableKeys.ed25519.shift()};
-  const nextNextKeyHash = deriveHash(`did:key:${nextNextAuthKey.publicKeyMultibase}`);
+  const nextAuthKey = await generateEd25519VerificationMethod('authentication');
+  const nextNextAuthKey = await generateEd25519VerificationMethod('authentication');
+  const nextNextKeyHash = deriveHash(nextNextAuthKey.publicKeyMultibase);
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
       log: didLog,
       signer: createSigner(currentAuthKey!),
       updateKeys: [
-        `did:key:${nextAuthKey.publicKeyMultibase}`
+        nextAuthKey.publicKeyMultibase!
       ],
-      prerotate: true,
+      prerotation: true,
       nextKeyHashes: [nextNextKeyHash],
       context: doc['@context'],
       verificationMethods: [
@@ -279,10 +269,10 @@ test("Update DID (enable prerotate)", async () => {
     didLog = [...updatedLog];
     expect(updatedDID).toBe(did);
     expect(updatedDoc.controller).toContain(did)
-    expect(meta.prerotate).toBe(true);
+    expect(meta.prerotation).toBe(true);
     expect(meta.nextKeyHashes).toContain(nextNextKeyHash);
 
-    expect(meta.versionId).toBe(6);
+    expect(meta.versionId.split('-')[0]).toBe("6");
     
     writeFilesToDisk(updatedLog, updatedDoc, 6);
     currentAuthKey = nextAuthKey;
@@ -297,10 +287,6 @@ test("Resolve DID version 6", async () => {
 test("Deactivate DID", async () => {
   let didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
-  if (availableKeys.ed25519.length === 0) {
-    const {keys} = readKeysFromDisk();
-    availableKeys = JSON.parse(keys);
-  }
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await deactivateDID({
       log: didLog,
@@ -314,7 +300,7 @@ test("Deactivate DID", async () => {
     expect(updatedDoc.verificationMethod.length).toBe(0);
     expect(meta.deactivated).toBe(true);
 
-    expect(meta.versionId).toBe(7);
+    expect(meta.versionId.split('-')[0]).toBe("7");
     
     writeFilesToDisk(updatedLog, updatedDoc, 7);
 });

@@ -18,9 +18,9 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@digitalbazaar/ed25519-multikey": "^1.1.0",
+    "@interop/base58-universal": "^1.0.0",
+    "@noble/curves": "^1.4.2",
     "@noble/ed25519": "^2.1.0",
-    "base32": "^0.0.7",
     "elysia": "^0.8.17",
     "fast-json-patch": "^3.1.1",
     "json-canonicalize": "^1.0.6",

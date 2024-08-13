@@ -1,24 +1,46 @@
-import base32 from 'base32';
+import * as base58btc from '@interop/base58-universal'
 import { canonicalize } from 'json-canonicalize';
-import { createHash } from 'node:crypto';
 import { nanoid } from 'nanoid';
+import { createHash } from 'node:crypto';
+import { sha256 } from 'multiformats/hashes/sha2'
 
 export const clone = (input: any) => JSON.parse(JSON.stringify(input));
 
-export const createDate = (created?: Date) => new Date(created ?? Date.now()).toISOString().slice(0,-5)+'Z';
+export const getFileUrl = (id: string) => {
+  if (!id.startsWith('did:tdw:')) {
+    throw new Error(`${id} is not a valid did:tdw identifier`);
+  }
+  
+  const parts = id.split(':');
+  if (parts.length < 4) {
+    throw new Error(`${id} is not a valid did:tdw identifier`);
+  }
+  
+  const scid = parts[2];
+  const domain = parts.slice(3).join(':');
+  
+  const protocol = domain.includes('localhost') ? 'http' : 'https';
+  
+  if (domain.includes('/')) {
+    return `${protocol}://${domain}/did.jsonl`;
+  }
+  return `${protocol}://${domain}/.well-known/did.jsonl`;
+}
+
+export const createDate = (created?: Date | string) => new Date(created ?? Date.now()).toISOString().slice(0,-5)+'Z';
 
 export function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes).map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
 export const createSCID = async (logEntryHash: string): Promise<string> => {
-  return `${logEntryHash.slice(0, 28)}`;
+  return logEntryHash;
 }
 
 export const deriveHash = (input: any): string => {
   const data = canonicalize(input);
-  const hash = createHash('sha256').update(data).digest();
-  return base32.encode(hash);
+  const encoder = new TextEncoder();
+  return base58btc.encode((sha256.digest(encoder.encode(data)) as any).bytes);
 }
 
 export const createDIDDoc = async (options: CreateDIDInterface): Promise<{doc: DIDDoc}> => {

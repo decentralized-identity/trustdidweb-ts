@@ -1,11 +1,10 @@
 import { resolveDID } from '../method';
+import { getFileUrl } from '../utils';
 
 export const getLatestDIDDoc = async ({params: {id}, set}: {params: {id: string;}; set: any;}) => {
-  console.log(`Resolving ${id}...`);
   try {
-    const didLog = await Bun.file(`./test/logs/${id}/did.jsonl`).text();
-    // console.log(didLog)
-    // const logLine: string = '[{"op":"replace","path":"/proof/proofValue","value":"z128ss1..."}]';
+    const url = getFileUrl(id);
+    const didLog = await (await fetch(url)).text();
     const logEntries: DIDLog = didLog.trim().split('\n').map(l => JSON.parse(l));
     const {did, doc, meta} = await resolveDID(logEntries);
     return {doc, meta};
@@ -13,4 +12,8 @@ export const getLatestDIDDoc = async ({params: {id}, set}: {params: {id: string;
     console.error(e)
     throw new Error(`Failed to resolve DID`);
   }
+}
+
+export const getLogFile = ({params: {scid}}: {params: {scid: string}}) => {
+  return Bun.file(`./test/logs/${scid}/did.jsonl`);
 }
