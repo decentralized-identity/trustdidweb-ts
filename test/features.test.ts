@@ -128,7 +128,7 @@ test("Require `nextKeyHashes` if prerotation enabled in Read (when enabled in Cr
   let err;
   const badLog: DIDLog = [
     [ "1-5v2bjwgmeqpnuu669zd7956w1w14", "2024-06-06T08:23:06Z", {
-        method: "did:tdw:1",
+        method: "did:tdw:0.3",
         scid: "5v2bjwgmeqpnuu669zd7956w1w14",
         updateKeys: [ "did:key:z6Mkr2D4ixckmQx8tAVvXEhMuaMhzahxe61qJt7G9vYyiXiJ" ],
         prerotate: true,
@@ -199,7 +199,7 @@ test("Require `nextKeyHashes` if prerotation enabled in Update", async () => {
 test("Require `nextKeyHashes` if prerotation enabled in Read (when enabled in Update)", async () => {
   let err: any;
   const mockLog = createMockDIDLog([
-    ['1-mock-hash', createDate(), { method: "did:tdw:1", scid: "test-scid" }, { value: { id: "did:tdw:example.com:test-scid" } } ],
+    ['1-mock-hash', createDate(), { method: "did:tdw:0.3", scid: "test-scid" }, { value: { id: "did:tdw:example.com:test-scid" } } ],
     ['2-mock-hash', createDate().toString(), {prerotate: true}, { patch: [] } ],
     ['3-mock-hash', createDate().toString(), {}, { patch: [] } ],
   ]);
@@ -246,7 +246,7 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when e
   let err: any;
   process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH = "true";
   const mockLog = createMockDIDLog([
-    ['1-mock-hash', createDate(), { method: "did:tdw:1", scid: "test-scid", prerotate: true, nextKeyHashes: ['213123123']}, { value: { id: "did:tdw:example.com:test-scid" } } ],
+    ['1-mock-hash', createDate(), { method: "did:tdw:0.3", scid: "test-scid", prerotate: true, nextKeyHashes: ['213123123']}, { value: { id: "did:tdw:example.com:test-scid" } } ],
     ['2-mock-hash', createDate().toString(), {updateKeys: ['1213'], nextKeyHashes: ['123']}, { patch: [] } ]
   ]);
   try {
@@ -297,7 +297,7 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when e
   let err: any;
   process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH = "true";
   const mockLog = createMockDIDLog([
-    ['1-mock-hash', createDate(), { method: "did:tdw:1", scid: "test-scid" }, { value: { id: "did:tdw:example.com:test-scid" } } ],
+    ['1-mock-hash', createDate(), { method: "did:tdw:0.3", scid: "test-scid" }, { value: { id: "did:tdw:example.com:test-scid" } } ],
     ['2-mock-hash', createDate().toString(), {prerotate: true, nextKeyHashes: ['1231']}, { patch: [] } ],
     ['3-mock-hash', createDate().toString(), {updateKeys: ['12312312312321']}, { patch: [] } ],
   ]);

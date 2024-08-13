@@ -72,7 +72,7 @@ test("Create DID (2 keys + domain)", async () => {
   
   expect(newLog[0][0]).toBe(meta.versionId);
   expect(newLog[0][1]).toBe(meta.created);
-  expect(newLog[0][2].method).toBe(`did:${METHOD}:1`);
+  expect(newLog[0][2].method).toBe(`did:${METHOD}:0.3`);
   expect(newLog[0][2].portable).toBe(true);
 
   writeFilesToDisk(newLog, newDoc, 1);
