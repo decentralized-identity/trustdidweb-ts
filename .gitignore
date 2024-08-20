@@ -3,4 +3,4 @@ test/logs
 .vscode
 node_modules
 bun.lockb
-
+claude_chats

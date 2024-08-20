@@ -36,11 +36,11 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
     {value: doc}
   ]
   const initialLogEntryHash = deriveHash(initialLogEntry);
-  const scid = await createSCID(initialLogEntryHash);
-  doc = JSON.parse(JSON.stringify(doc).replaceAll(PLACEHOLDER, scid));
+  params.scid = await createSCID(initialLogEntryHash);
+  doc = JSON.parse(JSON.stringify(doc).replaceAll(PLACEHOLDER, params.scid));
 
   initialLogEntry[0] = `1-${initialLogEntryHash}`;
-  initialLogEntry[2] = JSON.parse(JSON.stringify(initialLogEntry[2]).replaceAll(PLACEHOLDER, scid));
+  initialLogEntry[2] = JSON.parse(JSON.stringify(initialLogEntry[2]).replaceAll(PLACEHOLDER, params.scid));
   initialLogEntry[3] = { value: doc }
 
   const signedDoc = await options.signer(doc, initialLogEntry[0]);

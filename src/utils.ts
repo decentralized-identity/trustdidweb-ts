@@ -1,8 +1,19 @@
+import fs from 'node:fs';
 import * as base58btc from '@interop/base58-universal'
 import { canonicalize } from 'json-canonicalize';
 import { nanoid } from 'nanoid';
-import { createHash } from 'node:crypto';
 import { sha256 } from 'multiformats/hashes/sha2'
+
+export const readLogFromDisk = (path: string): DIDLog => {
+  return fs.readFileSync(path, 'utf8').trim().split('\n').map(l => JSON.parse(l));
+}
+
+export const writeLogToDisk = (path: string, log: DIDLog) => {
+  fs.writeFileSync(path, JSON.stringify(log.shift()) + '\n');
+  for (const entry of log) {
+    fs.appendFileSync(path, JSON.stringify(entry) + '\n');
+  }
+}
 
 export const clone = (input: any) => JSON.parse(JSON.stringify(input));
 
@@ -16,9 +27,7 @@ export const getFileUrl = (id: string) => {
     throw new Error(`${id} is not a valid did:tdw identifier`);
   }
   
-  const scid = parts[2];
   const domain = parts.slice(3).join(':');
-  
   const protocol = domain.includes('localhost') ? 'http' : 'https';
   
   if (domain.includes('/')) {
@@ -105,7 +114,54 @@ export const normalizeVMs = (verificationMethod: VerificationMethod[] | undefine
 }
 
 export const collectWitnessProofs = async (witnesses: string[], log: DIDLog): Promise<DataIntegrityProof[]> => {
-  // This function should implement the logic to collect proofs from witnesses
-  // For now, we'll return an empty array
-  return [];
-}
+  const proofs: DataIntegrityProof[] = [];
+
+  const timeout = (ms: number) => new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('Request timed out')), ms)
+  );
+
+  const collectProof = async (witness: string): Promise<void> => {
+    const parts = witness.split(':');
+    if (parts.length < 4) {
+      throw new Error(`${witness} is not a valid did:tdw identifier`);
+    }
+    
+    const domain = parts.slice(3).join(':');
+    const protocol = domain.includes('localhost') ? 'http' : 'https';
+    const witnessUrl = `${protocol}://${domain}/witness`;
+    try {
+      const response: any = await Promise.race([
+        fetch(`${witnessUrl}/witness`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ log }),
+        }),
+        timeout(10000) // 10 second timeout
+      ]);
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.proof) {
+          proofs.push(data.proof);
+        } else {
+          console.warn(`Witness ${witnessUrl} did not provide a valid proof`);
+        }
+      } else {
+        console.warn(`Witness ${witnessUrl} responded with status: ${response.status}`);
+      }
+    } catch (error: any) {
+      if (error.message === 'Request timed out') {
+        console.error(`Request to witness ${witnessUrl} timed out`);
+      } else {
+        console.error(`Error collecting proof from witness ${witnessUrl}:`, error);
+      }
+    }
+  };
+
+  // Collect proofs from all witnesses concurrently
+  await Promise.all(witnesses.map(collectProof));
+
+  return proofs;
+};
