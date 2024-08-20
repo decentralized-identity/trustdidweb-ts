@@ -103,3 +103,9 @@ export const normalizeVMs = (verificationMethod: VerificationMethod[] | undefine
   }
   return {all};
 }
+
+export const collectWitnessProofs = async (witnesses: string[], log: DIDLog): Promise<DataIntegrityProof[]> => {
+  // This function should implement the logic to collect proofs from witnesses
+  // For now, we'll return an empty array
+  return [];
+}

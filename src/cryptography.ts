@@ -1,5 +1,6 @@
 import * as ed from '@noble/ed25519';
 import { edwardsToMontgomeryPub, edwardsToMontgomeryPriv } from '@noble/curves/ed25519';
+import { v4 as uuidv4 } from 'uuid';
 
 import { bytesToHex, createDate } from "./utils";
 import { base58btc } from "multiformats/bases/base58"
@@ -10,6 +11,7 @@ export const createSigner = (vm: VerificationMethod) => {
   return async (doc: any, challenge: string) => {
     try {
       const proof: any = {
+        id: `urn:uuid:${uuidv4()}`,
         type: 'DataIntegrityProof',
         cryptosuite: 'eddsa-jcs-2022',
         verificationMethod: `did:key:${vm.publicKeyMultibase}`,
