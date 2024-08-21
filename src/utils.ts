@@ -17,23 +17,26 @@ export const writeLogToDisk = (path: string, log: DIDLog) => {
 
 export const clone = (input: any) => JSON.parse(JSON.stringify(input));
 
-export const getFileUrl = (id: string) => {
-  if (!id.startsWith('did:tdw:')) {
+export const getBaseUrl = (id: string) => {
+  const parts = id.split(':');
+  if (!id.startsWith('did:tdw:') || parts.length < 4) {
     throw new Error(`${id} is not a valid did:tdw identifier`);
   }
   
-  const parts = id.split(':');
-  if (parts.length < 4) {
-    throw new Error(`${id} is not a valid did:tdw identifier`);
-  }
   let domain = parts.slice(3).join('/');
   domain = domain.replace(/%2F/g, ':');
   const protocol = domain.includes('localhost') ? 'http' : 'https';
+  return `${protocol}://${domain}`;
+}
+
+export const getFileUrl = (id: string) => {
+  const baseUrl = getBaseUrl(id);
   
-  if (domain.includes('/')) {
-    return `${protocol}://${domain}/did.jsonl`;
+  if (baseUrl.includes('/')) {
+    return `${baseUrl}/did.jsonl`;
   }
-  return `${protocol}://${domain}/.well-known/did.jsonl`;
+  return `${baseUrl}/.well-known/did.jsonl`;
+
 }
 
 export const createDate = (created?: Date | string) => new Date(created ?? Date.now()).toISOString().slice(0,-5)+'Z';
@@ -126,12 +129,10 @@ export const collectWitnessProofs = async (witnesses: string[], log: DIDLog): Pr
       throw new Error(`${witness} is not a valid did:tdw identifier`);
     }
     
-    const domain = parts.slice(3).join(':');
-    const protocol = domain.includes('localhost') ? 'http' : 'https';
-    const witnessUrl = `${protocol}://${domain}/witness`;
+    const witnessUrl = getBaseUrl(witness) + '/witness';
     try {
       const response: any = await Promise.race([
-        fetch(`${witnessUrl}/witness`, {
+        fetch(witnessUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -143,6 +144,7 @@ export const collectWitnessProofs = async (witnesses: string[], log: DIDLog): Pr
 
       if (response.ok) {
         const data = await response.json();
+        console.log(data)
         if (data.proof) {
           proofs.push(data.proof);
         } else {

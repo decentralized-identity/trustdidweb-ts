@@ -93,6 +93,7 @@ async function handleCreate(args: string[]) {
   console.log('Created DID:', did);
   console.log('DID Document:', JSON.stringify(doc, null, 2));
   console.log('Meta:', JSON.stringify(meta, null, 2));
+  console.log('DID Log:', JSON.stringify(log, null, 2));
 
   if (output) {
     writeLogToDisk(output, log);

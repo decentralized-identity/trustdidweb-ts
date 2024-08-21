@@ -44,13 +44,14 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
   initialLogEntry[3] = { value: doc }
 
   const signedDoc = await options.signer(doc, initialLogEntry[0]);
-  initialLogEntry.push([signedDoc.proof]);
+  let allProofs = [signedDoc.proof];
   if (options.witnesses && options.witnesses.length > 0) {
     const witnessProofs = await collectWitnessProofs(options.witnesses, [initialLogEntry]);
     if (witnessProofs.length > 0) {
-      initialLogEntry.push(witnessProofs);
+      allProofs = [...allProofs, ...witnessProofs];
     }
   }
+  initialLogEntry.push(allProofs);
   return {
     did: doc.id!,
     doc,
@@ -238,13 +239,14 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
   const logEntryHash = deriveHash(logEntry);
   logEntry[0] = `${nextVersion}-${logEntryHash}`;
   const signedDoc = await options.signer(newDoc, logEntry[0]);
-  logEntry.push([signedDoc.proof])
+  let allProofs = [signedDoc.proof];
   if (options.witnesses && options.witnesses.length > 0) {
     const witnessProofs = await collectWitnessProofs(options.witnesses, [...log, logEntry]);
     if (witnessProofs.length > 0) {
-      logEntry.push(witnessProofs);
+      allProofs = [...allProofs, ...witnessProofs];
     }
   }
+  logEntry.push(allProofs);
   return {
     did,
     doc: newDoc,
