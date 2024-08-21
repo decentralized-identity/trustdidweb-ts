@@ -1,30 +1,37 @@
 import { createDID, resolveDID, updateDID, deactivateDID } from './method';
 import { createSigner, generateEd25519VerificationMethod } from './cryptography';
-import { readLogFromDisk, writeLogToDisk } from './utils';
+import { getFileUrl, readLogFromDisk, writeLogToDisk } from './utils';
 
 const usage = `
 Usage: bun run cli -- [command] [options]
 
 Commands:
-  create   Create a new DID
-  resolve  Resolve a DID
-  update   Update an existing DID
+  create     Create a new DID
+  resolve    Resolve a DID
+  update     Update an existing DID
   deactivate Deactivate an existing DID
 
 Options:
-  --domain [domain]     Domain for the DID (required for create)
-  --log [file]          Path to the DID log file (required for resolve, update, deactivate)
-  --output [file]       Path to save the updated DID log (optional for create, update, deactivate)
+  --domain [domain]         Domain for the DID (required for create)
+  --log [file]              Path to the DID log file (required for resolve, update, deactivate)
+  --output [file]           Path to save the updated DID log (optional for create, update, deactivate)
+  --portable                Make the DID portable (optional for create)
+  --prerotation             Enable pre-rotation (optional for create and update)
+  --witness [witness]       Add a witness (can be used multiple times)
+  --witness-threshold [n]   Set witness threshold (optional, defaults to number of witnesses)
+  --service [service]       Add a service (format: type,endpoint) (can be used multiple times)
+  --add-vm [type]           Add a verification method (type can be authentication, assertionMethod, keyAgreement, capabilityInvocation, capabilityDelegation)
+  --also-known-as [alias]   Add an alsoKnownAs alias (can be used multiple times)
 
 Examples:
-  bun run cli -- create --domain example.com
-  bun run cli -- resolve --log ./did.jsonl
-  bun run cli -- update --log ./did.jsonl --output ./updated-did.jsonl
+  bun run cli -- create --domain example.com --portable --witness did:example:witness1 --witness did:example:witness2
+  bun run cli -- resolve --did did:tdw:123456:example.com
+  bun run cli -- update --log ./did.jsonl --output ./updated-did.jsonl --add-vm keyAgreement --service LinkedDomains,https://example.com
   bun run cli -- deactivate --log ./did.jsonl --output ./deactivated-did.jsonl
 `;
 
 async function main() {
-  const args = Bun.argv.slice(2);  // Use Bun.argv instead of process.argv
+  const args = Bun.argv.slice(2);
   const command = args[0];
 
   if (!command) {
@@ -58,11 +65,13 @@ async function main() {
 }
 
 async function handleCreate(args: string[]) {
-  const domainIndex = args.findIndex(arg => arg === '--domain');
-  const outputIndex = args.findIndex(arg => arg === '--output');
-
-  const domain = domainIndex !== -1 && args[domainIndex + 1] ? args[domainIndex + 1] : undefined;
-  const output = outputIndex !== -1 && args[outputIndex + 1] ? args[outputIndex + 1] : undefined;
+  const options = parseOptions(args);
+  const domain = options['domain'] as string;
+  const output = options['output'] as string | undefined;
+  const portable = options['portable'] !== undefined;
+  const prerotation = options['prerotation'] !== undefined;
+  const witnesses = options['witness'] as string[] | undefined;
+  const witnessThreshold = options['witness-threshold'] ? parseInt(options['witness-threshold'] as string) : witnesses?.length ?? 0;
 
   if (!domain) {
     console.error('Domain is required for create command');
@@ -75,6 +84,10 @@ async function handleCreate(args: string[]) {
     signer: createSigner(authKey),
     updateKeys: [authKey.publicKeyMultibase!],
     verificationMethods: [authKey],
+    portable,
+    prerotation,
+    witnesses,
+    witnessThreshold,
   });
 
   console.log('Created DID:', did);
@@ -88,28 +101,55 @@ async function handleCreate(args: string[]) {
 }
 
 async function handleResolve(args: string[]) {
-  const logIndex = args.findIndex(arg => arg === '--log');
-  const logFile = logIndex !== -1 && args[logIndex + 1] ? args[logIndex + 1] : undefined;
+  const options = parseOptions(args);
+  const didIdentifier = options['did'] as string;
 
-  if (!logFile) {
-    console.error('Log file is required for resolve command');
+  if (!didIdentifier) {
+    console.error('DID identifier is required for resolve command');
     process.exit(1);
   }
 
-  const log = readLogFromDisk(logFile);
-  const { did, doc, meta } = await resolveDID(log);
+  try {
+    const log = await fetchLogFromIdentifier(didIdentifier);
+    const { did, doc, meta } = await resolveDID(log);
 
-  console.log('Resolved DID:', did);
-  console.log('DID Document:', JSON.stringify(doc, null, 2));
-  console.log('Metadata:', meta);
+    console.log('Resolved DID:', did);
+    console.log('DID Document:', JSON.stringify(doc, null, 2));
+    console.log('Metadata:', meta);
+  } catch (error) {
+    console.error('Error resolving DID:', error);
+    process.exit(1);
+  }
+}
+
+async function fetchLogFromIdentifier(identifier: string): Promise<DIDLog> {
+  try {
+    const url = getFileUrl(identifier);
+    console.log(url, identifier)
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const text = await response.text();
+    return text.trim().split('\n').map(line => JSON.parse(line));
+  } catch (error) {
+    console.error('Error fetching DID log:', error);
+    throw error;
+  }
 }
 
 async function handleUpdate(args: string[]) {
-  const logIndex = args.findIndex(arg => arg === '--log');
-  const outputIndex = args.findIndex(arg => arg === '--output');
-
-  const logFile = logIndex !== -1 && args[logIndex + 1] ? args[logIndex + 1] : undefined;
-  const output = outputIndex !== -1 && args[outputIndex + 1] ? args[outputIndex + 1] : undefined;
+  const options = parseOptions(args);
+  const logFile = options['log'] as string;
+  const output = options['output'] as string | undefined;
+  const prerotation = options['prerotation'] !== undefined;
+  const witnesses = options['witness'] as string[] | undefined;
+  const witnessThreshold = options['witness-threshold'] ? parseInt(options['witness-threshold'] as string) : undefined;
+  const services = options['service'] ? parseServices(options['service'] as string[]) : undefined;
+  const addVm = options['add-vm'] as VerificationMethodType[] | undefined;
+  const alsoKnownAs = options['also-known-as'] as string[] | undefined;
 
   if (!logFile) {
     console.error('Log file is required for update command');
@@ -118,15 +158,30 @@ async function handleUpdate(args: string[]) {
 
   const log = readLogFromDisk(logFile);
   const authKey = await generateEd25519VerificationMethod('authentication');
+  
+  const verificationMethods: VerificationMethod[] = [
+    authKey,
+    ...(addVm?.map(type => ({
+      type,
+      publicKeyMultibase: authKey.publicKeyMultibase,
+    } as VerificationMethod)) || [])
+  ];
+
   const { did, doc, meta, log: updatedLog } = await updateDID({
     log,
     signer: createSigner(authKey),
     updateKeys: [authKey.publicKeyMultibase!],
-    verificationMethods: [authKey],
+    verificationMethods,
+    prerotation,
+    witnesses,
+    witnessThreshold,
+    services,
+    alsoKnownAs,
   });
 
   console.log('Updated DID:', did);
   console.log('Updated DID Document:', JSON.stringify(doc, null, 2));
+  console.log('Updated Metadata:', meta);
 
   if (output) {
     writeLogToDisk(output, updatedLog);
@@ -135,11 +190,9 @@ async function handleUpdate(args: string[]) {
 }
 
 async function handleDeactivate(args: string[]) {
-  const logIndex = args.findIndex(arg => arg === '--log');
-  const outputIndex = args.findIndex(arg => arg === '--output');
-
-  const logFile = logIndex !== -1 && args[logIndex + 1] ? args[logIndex + 1] : undefined;
-  const output = outputIndex !== -1 && args[outputIndex + 1] ? args[outputIndex + 1] : undefined;
+  const options = parseOptions(args);
+  const logFile = options['log'] as string;
+  const output = options['output'] as string | undefined;
 
   if (!logFile) {
     console.error('Log file is required for deactivate command');
@@ -155,11 +208,55 @@ async function handleDeactivate(args: string[]) {
 
   console.log('Deactivated DID:', did);
   console.log('Deactivated DID Document:', JSON.stringify(doc, null, 2));
+  console.log('Deactivated Metadata:', meta);
 
   if (output) {
     writeLogToDisk(output, deactivatedLog);
     console.log(`Deactivated DID log written to ${output}`);
   }
+}
+
+type VerificationMethodType = 'authentication' | 'assertionMethod' | 'keyAgreement' | 'capabilityInvocation' | 'capabilityDelegation';
+
+function parseOptions(args: string[]): Record<string, string | string[] | undefined> {
+  const options: Record<string, string | string[] | undefined> = {};
+  for (let i = 0; i < args.length; i++) {
+    if (args[i].startsWith('--')) {
+      const key = args[i].slice(2);
+      if (i + 1 < args.length && !args[i + 1].startsWith('--')) {
+        if (key === 'witness' || key === 'service' || key === 'also-known-as') {
+          options[key] = options[key] || [];
+          (options[key] as string[]).push(args[++i]);
+        } else if (key === 'add-vm') {
+          options[key] = options[key] || [];
+          const value = args[++i];
+          if (isValidVerificationMethodType(value)) {
+            (options[key] as VerificationMethodType[]).push(value);
+          } else {
+            console.error(`Invalid verification method type: ${value}`);
+            process.exit(1);
+          }
+        } else {
+          options[key] = args[++i];
+        }
+      } else {
+        options[key] = '';
+      }
+    }
+  }
+  return options;
+}
+
+// Add this function to validate VerificationMethodType
+function isValidVerificationMethodType(type: string): type is VerificationMethodType {
+  return ['authentication', 'assertionMethod', 'keyAgreement', 'capabilityInvocation', 'capabilityDelegation'].includes(type);
+}
+
+function parseServices(services: string[]): ServiceEndpoint[] {
+  return services.map(service => {
+    const [type, serviceEndpoint] = service.split(',');
+    return { type, serviceEndpoint };
+  });
 }
 
 main();

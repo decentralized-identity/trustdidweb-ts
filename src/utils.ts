@@ -26,8 +26,8 @@ export const getFileUrl = (id: string) => {
   if (parts.length < 4) {
     throw new Error(`${id} is not a valid did:tdw identifier`);
   }
-  
-  const domain = parts.slice(3).join(':');
+  let domain = parts.slice(3).join('/');
+  domain = domain.replace(/%2F/g, ':');
   const protocol = domain.includes('localhost') ? 'http' : 'https';
   
   if (domain.includes('/')) {

@@ -12,6 +12,10 @@ const app = new Elysia()
       .get('/versions', ({params: {id}}) => {
         console.log('versions')
       })
+    })
+  .get('/.well-known/did.jsonl', () => console.log('base domain log queried'))
+  .post('/witness', ({body}) => {
+    console.log(body)
   })
 	.listen(8000)
 

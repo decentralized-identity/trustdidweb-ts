@@ -15,5 +15,6 @@ export const getLatestDIDDoc = async ({params: {id}, set}: {params: {id: string;
 }
 
 export const getLogFile = ({params: {scid}}: {params: {scid: string}}) => {
+  console.log(scid)
   return Bun.file(`./test/logs/${scid}/did.jsonl`);
 }
