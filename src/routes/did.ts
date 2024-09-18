@@ -1,7 +1,7 @@
 import { resolveDID } from '../method';
 import { getFileUrl } from '../utils';
 
-export const getLatestDIDDoc = async ({params: {id}, set}: {params: {id: string;}; set: any;}) => {
+export const getLatestDIDDoc = async ({params: {id}}: {params: {id: string;};}) => {
   try {
     const url = getFileUrl(id);
     const didLog = await (await fetch(url)).text();

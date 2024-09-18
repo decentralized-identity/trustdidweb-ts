@@ -1,5 +1,5 @@
 import * as jsonpatch from 'fast-json-patch/index.mjs';
-import { clone, collectWitnessProofs, createDate, createDIDDoc, createSCID, deriveHash, normalizeVMs } from "./utils";
+import { clone, collectWitnessProofs, createDate, createDIDDoc, createSCID, deriveHash, findVerificationMethod, normalizeVMs } from "./utils";
 import { BASE_CONTEXT, METHOD, PLACEHOLDER, PROTOCOL } from './constants';
 import { documentStateIsValid, hashChainValid, newKeysAreValid, scidIsFromHash } from './assertions';
 
@@ -45,13 +45,15 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
 
   const signedDoc = await options.signer(doc, initialLogEntry[0]);
   let allProofs = [signedDoc.proof];
+  initialLogEntry.push(allProofs);
+
   if (options.witnesses && options.witnesses.length > 0) {
     const witnessProofs = await collectWitnessProofs(options.witnesses, [initialLogEntry]);
     if (witnessProofs.length > 0) {
       allProofs = [...allProofs, ...witnessProofs];
+      initialLogEntry[4] = allProofs;
     }
   }
-  initialLogEntry.push(allProofs);
   return {
     did: doc.id!,
     doc,
@@ -67,7 +69,15 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
   }
 }
 
-export const resolveDID = async (log: DIDLog, options: {versionNumber?: number, versionId?: string, versionTime?: Date} = {}): Promise<{did: string, doc: any, meta: DIDResolutionMeta}> => {
+export const resolveDID = async (log: DIDLog, options: {
+  versionNumber?: number, 
+  versionId?: string, 
+  versionTime?: Date,
+  verificationMethod?: string
+} = {}): Promise<{did: string, doc: any, meta: DIDResolutionMeta}> => {
+  if (options.verificationMethod && (options.versionNumber || options.versionId)) {
+    throw new Error("Cannot specify both verificationMethod and version number/id");
+  }
   const resolutionLog = clone(log);
   const protocol = resolutionLog[0][2].method;
   if(protocol !== PROTOCOL) {
@@ -92,6 +102,7 @@ export const resolveDID = async (log: DIDLog, options: {versionNumber?: number, 
   let host = '';
   let i = 0;
   let nextKeyHashes: string[] = [];
+
   for (const entry of resolutionLog) {
     const [currentVersionId, timestamp, params, data, ...rest] = entry;
     const [version, entryHash] = currentVersionId.split('-');
@@ -177,22 +188,28 @@ export const resolveDID = async (log: DIDLog, options: {versionNumber?: number, 
     }
     doc = clone(newDoc);
     did = doc.id;
-    if (options.versionNumber === version || options.versionId === meta.versionId) {
-      return {did, doc, meta}
+
+    // Check for matching verification method
+    if (options.verificationMethod && findVerificationMethod(doc, options.verificationMethod)) {
+      return {did, doc, meta};
+    }
+
+    if (options.versionNumber === parseInt(version) || options.versionId === meta.versionId) {
+      return {did, doc, meta};
     }
     if (options.versionTime && options.versionTime > new Date(meta.updated)) {
       if (resolutionLog[i+1] && options.versionTime < new Date(resolutionLog[i+1][1])) {
-        return {did, doc, meta}
+        return {did, doc, meta};
       } else if(!resolutionLog[i+1]) {
-        return {did, doc, meta}
+        return {did, doc, meta};
       }
     }
     i++;
   }
-  if (options.versionTime || options.versionId) {
+  if (options.versionTime || options.versionId || options.verificationMethod) {
     throw new Error(`DID with options ${JSON.stringify(options)} not found`);
   }
-  return {did, doc, meta}
+  return {did, doc, meta};
 }
 
 export const updateDID = async (options: UpdateDIDInterface): Promise<{did: string, doc: any, meta: DIDResolutionMeta, log: DIDLog}> => {

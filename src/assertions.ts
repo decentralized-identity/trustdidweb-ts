@@ -1,6 +1,6 @@
 import * as ed from '@noble/ed25519';
 import { base58btc } from "multiformats/bases/base58";
-import { bytesToHex, createSCID, deriveHash } from "./utils";
+import { bytesToHex, createSCID, deriveHash, resolveVM } from "./utils";
 import { canonicalize } from 'json-canonicalize';
 import { createHash } from 'node:crypto';
 
@@ -14,7 +14,7 @@ export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: 
   let i = 0;
   while(i < proofs.length) {
     const proof = proofs[i];
-    if (!keyIsAuthorized(proof.verificationMethod.split('#')[0].split('did:key:').at(-1), updateKeys)) {
+    if (!keyIsAuthorized(proof.verificationMethod.split('#')[0].split('did:key:').at(-1), updateKeys) && typeof proof.previousProof === 'undefined') {
       throw new Error(`key ${proof.verificationMethod} is not authorized to update.`)
     }
     if (proof.type !== 'DataIntegrityProof') {
@@ -26,7 +26,11 @@ export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: 
     if (proof.cryptosuite !== 'eddsa-jcs-2022') {
       throw new Error(`Unknown cryptosuite ${proof.cryptosuite}`);
     }
-    const publicKey = base58btc.decode(proof.verificationMethod.split('did:key:')[1].split('#')[0]);
+    const vm = await resolveVM(proof.verificationMethod);
+    if (!vm) {
+      throw new Error(`Verification Method ${proof.verificationMethod} not found`);
+    }
+    const publicKey = base58btc.decode(vm.publicKeyMultibase!);
     if (publicKey[0] !== 237 || publicKey[1] !== 1) {
       throw new Error(`multiKey doesn't include ed25519 header (0xed01)`)
     }

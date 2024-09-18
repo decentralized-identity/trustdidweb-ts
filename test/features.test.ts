@@ -1,10 +1,11 @@
 import * as jsonpatch from 'fast-json-patch/index.mjs';
-import { beforeAll, expect, mock, test} from "bun:test";
+import { beforeAll, expect, test} from "bun:test";
 import { createDID, resolveDID, updateDID } from "../src/method";
+import { mock } from "bun-bagel";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
-import { deriveHash, createDate, clone } from "../src/utils";
+import { deriveHash, createDate, clone, collectWitnessProofs } from "../src/utils";
 import { newKeysAreValid } from '../src/assertions';
-import { createMockDIDLog } from './utils';
+import { createMockDIDLog} from './utils';
 
 let log: DIDLog;
 let authKey1: VerificationMethod,
@@ -392,13 +393,30 @@ test("updateDID should not allow moving a non-portable DID", async () => {
 });
 
 test("Create DID with witnesses", async () => {
+  mock("https://example.com/1234/witness", { method: "POST", response: { data: {proof: {
+    type: "DataIntegrityProof",
+    cryptosuite: "eddsa-jcs-2022",
+    verificationMethod: "did:tdw:1234:example.com:1234#key1",
+    created: "2023-06-18T21:19:10Z",
+    proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
+    proofPurpose: "authentication"
+  } } }});
+  mock("https://example.com/5678/witness", { method: "POST", response: { data: {proof: {
+    type: "DataIntegrityProof",
+    cryptosuite: "eddsa-jcs-2022",
+    verificationMethod: "did:tdw:5678:example.com:5678#key1",
+    created: "2023-06-18T21:19:10Z",
+    proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
+    proofPurpose: "authentication",
+    previousProof: "cc0aeaf5-381e-4137-95f4-f759ce6e8fb1"
+  } } }});
   const authKey = await generateEd25519VerificationMethod('authentication');
   const { did, doc, meta, log } = await createDID({
     domain: 'example.com',
     signer: createSigner(authKey),
     updateKeys: [authKey.publicKeyMultibase!],
     verificationMethods: [authKey],
-    witnesses: ['witness1', 'witness2'],
+    witnesses: ['did:tdw:1234:example.com:1234', 'did:tdw:5678:example.com:5678'],
     witnessThreshold: 1
   });
 
@@ -408,21 +426,37 @@ test("Create DID with witnesses", async () => {
 });
 
 test("Update DID with witnesses", async () => {
+  mock("https://example.com/1234/witness", { method: "POST", response: { data: {proof: {
+    type: "DataIntegrityProof",
+    cryptosuite: "eddsa-jcs-2022",
+    verificationMethod: "did:tdw:1234:example.com:1234#key1",
+    created: "2023-06-18T21:19:10Z",
+    proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
+    proofPurpose: "authentication",
+    previousProof: "cc0aeaf5-381e-4137-95f4-f759ce6e8fb1"
+  } } }});
+  mock("https://example.com/5678/witness", { method: "POST", response: { data: {proof: {
+    type: "DataIntegrityProof",
+    cryptosuite: "eddsa-jcs-2022",
+    verificationMethod: "did:tdw:5678:example.com:5678#key1",
+    created: "2023-06-18T21:19:10Z",
+    proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
+    proofPurpose: "authentication",
+    previousProof: "cc0aeaf5-381e-4137-95f4-f759ce6e8fb1"
+  } } }});
   const authKey = await generateEd25519VerificationMethod('authentication');
   const { did, doc, meta, log } = await createDID({
     domain: 'example.com',
     signer: createSigner(authKey),
     updateKeys: [authKey.publicKeyMultibase!],
-    verificationMethods: [authKey],
-    witnesses: ['witness1', 'witness2'],
-    witnessThreshold: 1
+    verificationMethods: [authKey]
   });
   
   const { doc: updatedDoc, meta: updatedMeta, log: updatedLog } = await updateDID({
     log,
     signer: createSigner(authKey),
     updateKeys: [authKey.publicKeyMultibase!],
-    witnesses: ['witness1', 'witness2'],
+    witnesses: ['did:tdw:1234:example.com:1234', 'did:tdw:5678:example.com:5678'],
     witnessThreshold: 2
   });
 

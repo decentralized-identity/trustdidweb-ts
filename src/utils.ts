@@ -3,6 +3,7 @@ import * as base58btc from '@interop/base58-universal'
 import { canonicalize } from 'json-canonicalize';
 import { nanoid } from 'nanoid';
 import { sha256 } from 'multiformats/hashes/sha2'
+import { resolveDID } from './method';
 
 export const readLogFromDisk = (path: string): DIDLog => {
   return fs.readFileSync(path, 'utf8').trim().split('\n').map(l => JSON.parse(l));
@@ -144,7 +145,6 @@ export const collectWitnessProofs = async (witnesses: string[], log: DIDLog): Pr
 
       if (response.ok) {
         const data = await response.json();
-        console.log(data)
         if (data.proof) {
           proofs.push(data.proof);
         } else {
@@ -167,3 +167,36 @@ export const collectWitnessProofs = async (witnesses: string[], log: DIDLog): Pr
 
   return proofs;
 };
+
+export const resolveVM = async (vm: string) => {
+  if (vm.startsWith('did:key:')) {
+    return {publicKeyMultibase: vm.split('did:key:')[1].split('#')[0]}
+  }
+  else if (vm.startsWith('did:tdw:')) {
+    const url = getFileUrl(vm.split('#')[0]);
+    const didLog = await (await fetch(url)).text();
+    const logEntries: DIDLog = didLog.trim().split('\n').map(l => JSON.parse(l));
+    const doc = await resolveDID(logEntries, {verificationMethod: vm});
+    return findVerificationMethod(doc, vm);
+  }
+  throw new Error(`Verification method ${vm} not found`);
+}
+
+export const findVerificationMethod = (doc: any, vmId: string): VerificationMethod | null => {
+  // Check in the verificationMethod array
+  if (doc.verificationMethod && doc.verificationMethod.some((vm: any) => vm.id === vmId)) {
+    return doc.verificationMethod.find((vm: any) => vm.id === vmId);
+  }
+
+  // Check in other verification method relationship arrays
+  const vmRelationships = ['authentication', 'assertionMethod', 'keyAgreement', 'capabilityInvocation', 'capabilityDelegation'];
+  for (const relationship of vmRelationships) {
+    if (doc[relationship]) {
+      if (doc[relationship].some((item: any) => item.id === vmId)) {
+        return doc[relationship].find((item: any) => item.id === vmId);
+      }
+    }
+  }
+
+  return null;
+}

@@ -6,12 +6,14 @@
     "server": "bun --watch ./src/resolver.ts",
     "test": "bun test",
     "test:watch": "bun test --watch",
-    "test:bail": "bun test --watch --bail",
+    "test:bail": "bun test --watch --bail --verbose",
     "test:log": "mkdir -p ./test/logs && LOG_RESOLVES=true bun test &> ./test/logs/test-run.txt",
     "cli": "bun run src/cli.ts --"
   },
   "devDependencies": {
+    "bun-bagel": "github:brianorwhatever/bun-bagel",
     "bun-types": "latest",
+    "nock": "^13.5.5",
     "ts-node": "^10.9.2",
     "tsx": "^4.7.1"
   },
