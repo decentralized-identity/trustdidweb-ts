@@ -1,3 +1,4 @@
+.env
 test/logs
 .DS_Store
 .vscode

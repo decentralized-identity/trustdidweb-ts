@@ -2,7 +2,9 @@ import { beforeAll, describe, expect, test } from "bun:test";
 import { createDID, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 
+const WITNESS_SCID = "Q1";
 const WITNESS_SERVER_URL = "http://localhost:8000"; // Update this to match your witness server URL
+const WITNESS_DOMAIN = WITNESS_SERVER_URL.split('//')[1].replace(':', '%3A');
 
 const isWitnessServerRunning = async () => {
   try {
@@ -40,11 +42,10 @@ const runWitnessTests = async () => {
         signer: createSigner(authKey),
         updateKeys: [authKey.publicKeyMultibase!],
         verificationMethods: [authKey],
-        // witnesses: [`did:tdw:${initialDID.meta.scid}:${WITNESS_SERVER_URL.split('//')[1].replace(':', '%3A')}`],
-        // witnessThreshold: 1
+        witnesses: [`did:tdw:${WITNESS_SCID}:${WITNESS_DOMAIN}`],
+        witnessThreshold: 1
       });
-      console.log(initialDID)
-      console.log(`did:tdw:${initialDID.meta.scid}:${}`)
+      console.log(initialDID.log[0])
 
       expect(initialDID.meta.witnesses).toHaveLength(1);
       expect(initialDID.meta.witnessThreshold).toBe(1);
@@ -67,7 +68,7 @@ const runWitnessTests = async () => {
 
     test("Witness signing with environment variable key", async () => {
       if (!process.env.WITNESS_PRIVATE_KEY) {
-        test.skip("WITNESS_PRIVATE_KEY environment variable not set");
+        test.skip("WITNESS_PRIVATE_KEY environment variable not set", () => {});
         return;
       }
 
@@ -90,7 +91,7 @@ const runWitnessTests = async () => {
 
       expect(response.ok).toBe(true);
 
-      const data = await response.json();
+      const data: any = await response.json();
       expect(data.proof).toBeDefined();
       expect(data.proof.type).toBe('DataIntegrityProof');
       expect(data.proof.cryptosuite).toBe('eddsa-jcs-2022');

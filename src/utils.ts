@@ -4,6 +4,7 @@ import { canonicalize } from 'json-canonicalize';
 import { nanoid } from 'nanoid';
 import { sha256 } from 'multiformats/hashes/sha2'
 import { resolveDID } from './method';
+import { join } from 'path';
 
 export const readLogFromDisk = (path: string): DIDLog => {
   return fs.readFileSync(path, 'utf8').trim().split('\n').map(l => JSON.parse(l));
@@ -16,6 +17,42 @@ export const writeLogToDisk = (path: string, log: DIDLog) => {
   }
 }
 
+export const writeVerificationMethodToEnv = (verificationMethod: VerificationMethod) => {
+  const envFilePath = join(process.cwd(), '.env');
+  
+  const vmData = {
+    id: verificationMethod.id,
+    type: verificationMethod.type,
+    controller: verificationMethod.controller || '',
+    publicKeyMultibase: verificationMethod.publicKeyMultibase,
+    secretKeyMultibase: verificationMethod.secretKeyMultibase || ''
+  };
+
+  try {
+    let existingData: any[] = [];
+    if (fs.existsSync(envFilePath)) {
+      const envContent = fs.readFileSync(envFilePath, 'utf8');
+      const match = envContent.match(/DID_VERIFICATION_METHODS=(.*)/);
+      if (match && match[1]) {
+        const decodedData = Buffer.from(match[1], 'base64').toString('utf8');
+        existingData = JSON.parse(decodedData);
+      }
+    }
+
+    existingData.push(vmData);
+    
+    const jsonData = JSON.stringify(existingData);
+    const encodedData = Buffer.from(jsonData).toString('base64');
+    
+    const envContent = `DID_VERIFICATION_METHODS=${encodedData}\n`;
+
+    fs.writeFileSync(envFilePath, envContent);
+    console.log('Verification method written to .env file successfully.');
+  } catch (error) {
+    console.error('Error writing verification method to .env file:', error);
+  }
+};
+
 export const clone = (input: any) => JSON.parse(JSON.stringify(input));
 
 export const getBaseUrl = (id: string) => {
@@ -25,7 +62,8 @@ export const getBaseUrl = (id: string) => {
   }
   
   let domain = parts.slice(3).join('/');
-  domain = domain.replace(/%2F/g, ':');
+  domain = domain.replace(/%2F/g, '/');
+  domain = domain.replace(/%3A/g, ':');
   const protocol = domain.includes('localhost') ? 'http' : 'https';
   return `${protocol}://${domain}`;
 }

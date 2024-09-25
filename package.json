@@ -11,11 +11,8 @@
     "cli": "bun run src/cli.ts --"
   },
   "devDependencies": {
-    "bun-bagel": "github:brianorwhatever/bun-bagel",
-    "bun-types": "latest",
-    "nock": "^13.5.5",
-    "ts-node": "^10.9.2",
-    "tsx": "^4.7.1"
+    "bun-bagel": "^1.1.0",
+    "bun-types": "latest"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"

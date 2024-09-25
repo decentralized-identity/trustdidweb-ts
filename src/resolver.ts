@@ -1,11 +1,17 @@
 import { Elysia } from 'elysia'
 import { getLatestDIDDoc, getLogFile } from './routes/did';
+import { createWitnessProof } from './witness';
 
 const app = new Elysia()
   .get('/health', 'ok')
   .get('/.well-known/did.jsonl', () => console.log('base domain log queried'))
-  .post('/witness', ({body}) => {
-    console.log(body)
+  .post('/witness', async ({body}) => {
+    console.log('signing')
+    const result = await createWitnessProof((body as any).log);
+    if ('error' in result) {
+      return { error: result.error };
+    }
+    return { proof: result.proof };
   })
   .group('/:id', app => {
     return app
@@ -25,7 +31,7 @@ const app = new Elysia()
           }
         }
       })
-      .get('/', ({params, set}) => getLatestDIDDoc({params, set}))
+      .get('/', ({params, set}) => getLatestDIDDoc({params}))
     })
 	.listen(8000)
 

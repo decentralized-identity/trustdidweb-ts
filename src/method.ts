@@ -53,6 +53,7 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
       allProofs = [...allProofs, ...witnessProofs];
       initialLogEntry[4] = allProofs;
     }
+    console.log(witnessProofs)
   }
   return {
     did: doc.id!,

@@ -1,6 +1,6 @@
 import { createDID, resolveDID, updateDID, deactivateDID } from './method';
 import { createSigner, generateEd25519VerificationMethod } from './cryptography';
-import { getFileUrl, readLogFromDisk, writeLogToDisk } from './utils';
+import { getFileUrl, readLogFromDisk, writeLogToDisk, writeVerificationMethodToEnv } from './utils';
 
 const usage = `
 Usage: bun run cli -- [command] [options]
@@ -98,6 +98,8 @@ async function handleCreate(args: string[]) {
   if (output) {
     writeLogToDisk(output, log);
     console.log(`DID log written to ${output}`);
+    writeVerificationMethodToEnv({...authKey, controller: did, id: `${did}#${authKey.publicKeyMultibase?.slice(-8)}`});
+    console.log(`DID verification method saved to env`);
   }
 }
 
