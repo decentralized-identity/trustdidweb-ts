@@ -1,10 +1,10 @@
 import { Elysia } from 'elysia'
-import { getLatestDIDDoc, getLogFile } from './routes/did';
+import { getLatestDIDDoc, getLogFileForBase, getLogFileForSCID } from './routes/did';
 import { createWitnessProof } from './witness';
 
 const app = new Elysia()
   .get('/health', 'ok')
-  .get('/.well-known/did.jsonl', () => console.log('base domain log queried'))
+  .get('/.well-known/did.jsonl', () => getLogFileForBase())
   .post('/witness', async ({body}) => {
     console.log('signing')
     const result = await createWitnessProof((body as any).log);
@@ -15,7 +15,7 @@ const app = new Elysia()
   })
   .group('/:id', app => {
     return app
-      .get('/did.jsonl', ({params}) => getLogFile({params: {scid: params.id}}))
+      .get('/did.jsonl', ({params}) => getLogFileForSCID({params: {scid: params.id}}))
       .get('/:version', ({params: {id, version}}) => {
         console.log(version)
       })
@@ -31,7 +31,7 @@ const app = new Elysia()
           }
         }
       })
-      .get('/', ({params, set}) => getLatestDIDDoc({params}))
+      .get('/', ({params}) => getLatestDIDDoc({params}))
     })
 	.listen(8000)
 

@@ -5,3 +5,4 @@ test/logs
 node_modules
 bun.lockb
 claude_chats
+*.jsonl

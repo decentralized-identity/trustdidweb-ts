@@ -53,7 +53,6 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
       allProofs = [...allProofs, ...witnessProofs];
       initialLogEntry[4] = allProofs;
     }
-    console.log(witnessProofs)
   }
   return {
     did: doc.id!,
@@ -80,6 +79,7 @@ export const resolveDID = async (log: DIDLog, options: {
     throw new Error("Cannot specify both verificationMethod and version number/id");
   }
   const resolutionLog = clone(log);
+  console.log('res', resolutionLog)
   const protocol = resolutionLog[0][2].method;
   if(protocol !== PROTOCOL) {
     throw new Error(`'${protocol}' protocol unknown.`);

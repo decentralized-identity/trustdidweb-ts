@@ -41,7 +41,6 @@ interface DataIntegrityProof {
   proofValue: string;
   proofPurpose: string;
   challenge?: string;
-  previousProof?: string;
 }
 
 type DIDLogEntry = [

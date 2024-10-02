@@ -34,6 +34,7 @@ const writeFilesToDisk = (_log: DIDLog, _doc: any, version: number) => {
 
 const testResolveVersion = async (version: number) => {
   const log = readLogFromDisk(logFile);
+  console.log(log);
   const {did: resolvedDID, doc: resolvedDoc, meta} = await resolveDID(log, {versionNumber: version});
 
   if(verboseMode) {

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, test } from "bun:test";
-import { createDID, updateDID } from "../src/method";
+import { createDID, resolveDID, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 
 const WITNESS_SCID = "Q1";
@@ -35,7 +35,7 @@ const runWitnessTests = async () => {
       authKey = await generateEd25519VerificationMethod('authentication');
     });
 
-    test.only("Create DID with witness", async () => {
+    test("Create DID with witness", async () => {
       const domain = WITNESS_SERVER_URL.split('//')[1].replace(':', '%3A');
       initialDID = await createDID({
         domain,
@@ -45,8 +45,10 @@ const runWitnessTests = async () => {
         witnesses: [`did:tdw:${WITNESS_SCID}:${WITNESS_DOMAIN}`],
         witnessThreshold: 1
       });
-      console.log(initialDID.log[0])
+      console.log('init', initialDID.log)
+      const resolved = await resolveDID(initialDID.log);
 
+      expect(resolved.did).toBe(initialDID.did);
       expect(initialDID.meta.witnesses).toHaveLength(1);
       expect(initialDID.meta.witnessThreshold).toBe(1);
       expect(initialDID.log[0][4]).toHaveLength(2); // Controller proof + witness proof

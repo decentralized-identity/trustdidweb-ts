@@ -3,8 +3,7 @@ import { beforeAll, expect, test} from "bun:test";
 import { createDID, resolveDID, updateDID } from "../src/method";
 import { mock } from "bun-bagel";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
-import { deriveHash, createDate, clone, collectWitnessProofs } from "../src/utils";
-import { newKeysAreValid } from '../src/assertions';
+import { deriveHash, createDate, clone } from "../src/utils";
 import { createMockDIDLog} from './utils';
 
 let log: DIDLog;
@@ -407,8 +406,7 @@ test("Create DID with witnesses", async () => {
     verificationMethod: "did:tdw:5678:example.com:5678#key1",
     created: "2023-06-18T21:19:10Z",
     proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
-    proofPurpose: "authentication",
-    previousProof: "cc0aeaf5-381e-4137-95f4-f759ce6e8fb1"
+    proofPurpose: "authentication"
   } } }});
   const authKey = await generateEd25519VerificationMethod('authentication');
   const { did, doc, meta, log } = await createDID({
@@ -432,8 +430,7 @@ test("Update DID with witnesses", async () => {
     verificationMethod: "did:tdw:1234:example.com:1234#key1",
     created: "2023-06-18T21:19:10Z",
     proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
-    proofPurpose: "authentication",
-    previousProof: "cc0aeaf5-381e-4137-95f4-f759ce6e8fb1"
+    proofPurpose: "authentication"
   } } }});
   mock("https://example.com/5678/witness", { method: "POST", response: { data: {proof: {
     type: "DataIntegrityProof",
@@ -441,8 +438,7 @@ test("Update DID with witnesses", async () => {
     verificationMethod: "did:tdw:5678:example.com:5678#key1",
     created: "2023-06-18T21:19:10Z",
     proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
-    proofPurpose: "authentication",
-    previousProof: "cc0aeaf5-381e-4137-95f4-f759ce6e8fb1"
+    proofPurpose: "authentication"
   } } }});
   const authKey = await generateEd25519VerificationMethod('authentication');
   const { did, doc, meta, log } = await createDID({

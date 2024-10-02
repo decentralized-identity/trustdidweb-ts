@@ -9,14 +9,21 @@ export const keyIsAuthorized = (key: string, updateKeys: string[]) => {
   return updateKeys.includes(key);
 }
 
-export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: string[]) => {
+export const keyIsFromWitness = (id: string, witnesses: string[]) => {
+  return witnesses.includes(id);
+}
+
+export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: string[], witnesses: string[] = []) => {
   if (process.env.IGNORE_ASSERTION_DOCUMENT_STATE_IS_VALID) return true;
   let i = 0;
   while(i < proofs.length) {
     const proof = proofs[i];
-    if (!keyIsAuthorized(proof.verificationMethod.split('#')[0].split('did:key:').at(-1), updateKeys) && typeof proof.previousProof === 'undefined') {
+    if (proof.verificationMethod.startsWith('did:key:') && !keyIsAuthorized(proof.verificationMethod.split('#')[0].split('did:key:').at(-1), updateKeys)) {
       throw new Error(`key ${proof.verificationMethod} is not authorized to update.`)
+    } else if (witnesses.length > 0 && !keyIsFromWitness(proof.verificationMethod.split('#')[0], witnesses)) {
+      throw new Error(`key ${proof.verificationMethod} is not from a witness.`)
     }
+    
     if (proof.type !== 'DataIntegrityProof') {
       throw new Error(`Unknown proof type ${proof.type}`);
     }
@@ -30,16 +37,17 @@ export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: 
     if (!vm) {
       throw new Error(`Verification Method ${proof.verificationMethod} not found`);
     }
+    console.log('vm', vm, i, proof);
     const publicKey = base58btc.decode(vm.publicKeyMultibase!);
     if (publicKey[0] !== 237 || publicKey[1] !== 1) {
       throw new Error(`multiKey doesn't include ed25519 header (0xed01)`)
     }
     const {proofValue, ...restProof} = proof;
+    console.log('doc', doc)
     const sig = base58btc.decode(proofValue);
     const dataHash = createHash('sha256').update(canonicalize(doc)).digest();
     const proofHash = createHash('sha256').update(canonicalize(restProof)).digest();
     const input = Buffer.concat([dataHash, proofHash]);
-
     const verified = await ed.verifyAsync(
       bytesToHex(sig),
       bytesToHex(input),

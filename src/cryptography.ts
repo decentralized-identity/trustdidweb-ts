@@ -1,20 +1,18 @@
 import * as ed from '@noble/ed25519';
 import { edwardsToMontgomeryPub, edwardsToMontgomeryPriv } from '@noble/curves/ed25519';
-import { v4 as uuidv4 } from 'uuid';
 
 import { bytesToHex, createDate } from "./utils";
 import { base58btc } from "multiformats/bases/base58"
 import { canonicalize } from 'json-canonicalize';
 import { createHash } from 'node:crypto';
 
-export const createSigner = (vm: VerificationMethod) => {
+export const createSigner = (vm: VerificationMethod, useStatic: boolean = true) => {
   return async (doc: any, challenge: string) => {
     try {
       const proof: any = {
-        id: `urn:uuid:${uuidv4()}`,
         type: 'DataIntegrityProof',
         cryptosuite: 'eddsa-jcs-2022',
-        verificationMethod: `did:key:${vm.publicKeyMultibase}`,
+        verificationMethod: useStatic ? `did:key:${vm.publicKeyMultibase}` : vm.id,
         created: createDate(),
         proofPurpose: 'authentication',
         challenge

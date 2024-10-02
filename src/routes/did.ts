@@ -14,7 +14,10 @@ export const getLatestDIDDoc = async ({params: {id}}: {params: {id: string;};}) 
   }
 }
 
-export const getLogFile = ({params: {scid}}: {params: {scid: string}}) => {
-  console.log(scid)
-  return Bun.file(`./test/logs/${scid}/did.jsonl`);
+export const getLogFileForSCID = async ({params: {scid}}: {params: {scid: string}}) => {
+  return await Bun.file(`./src/routes/${scid}/did.jsonl`).text();
+}
+
+export const getLogFileForBase = async () => {
+  return await Bun.file(`./src/routes/.well-known/did.jsonl`).text();
 }

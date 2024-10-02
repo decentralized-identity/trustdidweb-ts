@@ -70,12 +70,11 @@ export const getBaseUrl = (id: string) => {
 
 export const getFileUrl = (id: string) => {
   const baseUrl = getBaseUrl(id);
-  
-  if (baseUrl.includes('/')) {
+  const url = new URL(baseUrl);
+  if (url.pathname !== '/') {
     return `${baseUrl}/did.jsonl`;
   }
   return `${baseUrl}/.well-known/did.jsonl`;
-
 }
 
 export const createDate = (created?: Date | string) => new Date(created ?? Date.now()).toISOString().slice(0,-5)+'Z';
@@ -207,6 +206,7 @@ export const collectWitnessProofs = async (witnesses: string[], log: DIDLog): Pr
 };
 
 export const resolveVM = async (vm: string) => {
+  console.log('resolveVM', vm);
   if (vm.startsWith('did:key:')) {
     return {publicKeyMultibase: vm.split('did:key:')[1].split('#')[0]}
   }
@@ -215,6 +215,7 @@ export const resolveVM = async (vm: string) => {
     const didLog = await (await fetch(url)).text();
     const logEntries: DIDLog = didLog.trim().split('\n').map(l => JSON.parse(l));
     const doc = await resolveDID(logEntries, {verificationMethod: vm});
+    console.log('doc', doc);
     return findVerificationMethod(doc, vm);
   }
   throw new Error(`Verification method ${vm} not found`);
