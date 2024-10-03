@@ -2,9 +2,18 @@ import { beforeAll, describe, expect, test } from "bun:test";
 import { createDID, resolveDID, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 
-const WITNESS_SCID = "Q1";
+let WITNESS_SCID = "";
 const WITNESS_SERVER_URL = "http://localhost:8000"; // Update this to match your witness server URL
 const WITNESS_DOMAIN = WITNESS_SERVER_URL.split('//')[1].replace(':', '%3A');
+
+const getWitnessDID = async () => {
+  try {
+    const response = await fetch(`${WITNESS_SERVER_URL}/.well-known/did.jsonl`);
+    return response.ok && (await response.json());
+  } catch (error) {
+    return false;
+  }
+}
 
 const isWitnessServerRunning = async () => {
   try {
@@ -33,6 +42,10 @@ const runWitnessTests = async () => {
 
     beforeAll(async () => {
       authKey = await generateEd25519VerificationMethod('authentication');
+      const didLog = await getWitnessDID();
+      const {did, meta} = await resolveDID([didLog] as DIDLog);
+      WITNESS_SCID = meta.scid;
+      console.log(`Witness DID ${did} found`);
     });
 
     test("Create DID with witness", async () => {
@@ -45,7 +58,6 @@ const runWitnessTests = async () => {
         witnesses: [`did:tdw:${WITNESS_SCID}:${WITNESS_DOMAIN}`],
         witnessThreshold: 1
       });
-      console.log('init', initialDID.log)
       const resolved = await resolveDID(initialDID.log);
 
       expect(resolved.did).toBe(initialDID.did);

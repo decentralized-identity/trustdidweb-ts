@@ -6,8 +6,8 @@ const app = new Elysia()
   .get('/health', 'ok')
   .get('/.well-known/did.jsonl', () => getLogFileForBase())
   .post('/witness', async ({body}) => {
-    console.log('signing')
     const result = await createWitnessProof((body as any).log);
+    console.log(`Signed with VM`, (result as any).proof.verificationMethod)
     if ('error' in result) {
       return { error: result.error };
     }
@@ -21,15 +21,6 @@ const app = new Elysia()
       })
       .get('/versions', ({params: {id}}) => {
         console.log('versions')
-      })
-      .post('/witness', ({params, body}) => {
-        // TODO FINISH WITNESS CODE
-        return {
-          proof: {
-            type: "DataIntegrityProof",
-            cryptosuite: 'eddsa-jcs-2022'
-          }
-        }
       })
       .get('/', ({params}) => getLatestDIDDoc({params}))
     })

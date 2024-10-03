@@ -206,19 +206,21 @@ export const collectWitnessProofs = async (witnesses: string[], log: DIDLog): Pr
 };
 
 export const resolveVM = async (vm: string) => {
-  console.log('resolveVM', vm);
-  if (vm.startsWith('did:key:')) {
-    return {publicKeyMultibase: vm.split('did:key:')[1].split('#')[0]}
+  try {
+    if (vm.startsWith('did:key:')) {
+      return {publicKeyMultibase: vm.split('did:key:')[1].split('#')[0]}
+    }
+    else if (vm.startsWith('did:tdw:')) {
+      const url = getFileUrl(vm.split('#')[0]);
+      const didLog = await (await fetch(url)).text();
+      const logEntries: DIDLog = didLog.trim().split('\n').map(l => JSON.parse(l));
+      const {doc} = await resolveDID(logEntries, {verificationMethod: vm});
+      return findVerificationMethod(doc, vm);
+    }
+    throw new Error(`Verification method ${vm} not found`);
+  } catch (e) {
+    throw new Error(`Error resolving VM ${vm}`)
   }
-  else if (vm.startsWith('did:tdw:')) {
-    const url = getFileUrl(vm.split('#')[0]);
-    const didLog = await (await fetch(url)).text();
-    const logEntries: DIDLog = didLog.trim().split('\n').map(l => JSON.parse(l));
-    const doc = await resolveDID(logEntries, {verificationMethod: vm});
-    console.log('doc', doc);
-    return findVerificationMethod(doc, vm);
-  }
-  throw new Error(`Verification method ${vm} not found`);
 }
 
 export const findVerificationMethod = (doc: any, vmId: string): VerificationMethod | null => {

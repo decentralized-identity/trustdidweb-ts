@@ -458,7 +458,7 @@ test("Update DID with witnesses", async () => {
 
   expect(updatedMeta.witnesses).toHaveLength(2);
   expect(updatedMeta.witnessThreshold).toBe(2);
-  expect(updatedLog[updatedLog.length - 1][4]!.length).toBe(3);
+  expect(updatedLog[updatedLog.length - 1][4]!.length).toBe(1);
 });
 
 // test("Resolve DID with invalid witness proofs", async () => {

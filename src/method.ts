@@ -79,7 +79,6 @@ export const resolveDID = async (log: DIDLog, options: {
     throw new Error("Cannot specify both verificationMethod and version number/id");
   }
   const resolutionLog = clone(log);
-  console.log('res', resolutionLog)
   const protocol = resolutionLog[0][2].method;
   if(protocol !== PROTOCOL) {
     throw new Error(`'${protocol}' protocol unknown.`);
@@ -105,7 +104,7 @@ export const resolveDID = async (log: DIDLog, options: {
   let nextKeyHashes: string[] = [];
 
   for (const entry of resolutionLog) {
-    const [currentVersionId, timestamp, params, data, ...rest] = entry;
+    const [currentVersionId, timestamp, params, data, proof] = entry;
     const [version, entryHash] = currentVersionId.split('-');
     if (parseInt(version) !== i + 1) {
       throw new Error(`version '${version}' in log doesn't match expected '${i + 1}'.`);
@@ -142,7 +141,7 @@ export const resolveDID = async (log: DIDLog, options: {
       if (!await scidIsFromHash(meta.scid, logEntryHash)) {
         throw new Error(`SCID '${meta.scid}' not derived from logEntryHash '${logEntryHash}'`);
       }
-      const verified = await documentStateIsValid(newDoc, rest[0], meta.updateKeys);
+      const verified = await documentStateIsValid(newDoc, proof, meta.updateKeys, meta.witnesses);
       if (!verified) {
         throw new Error(`version ${meta.versionId} failed verification of the proof.`)
       }
@@ -166,7 +165,7 @@ export const resolveDID = async (log: DIDLog, options: {
       if (!hashChainValid(`${i+1}-${entryHash}`, entry[0])) {
         throw new Error(`Hash chain broken at '${meta.versionId}'`);
       }
-      const verified = await documentStateIsValid(newDoc, rest[0], meta.updateKeys);
+      const verified = await documentStateIsValid(newDoc, proof, meta.updateKeys, meta.witnesses);
       if (!verified) {
         throw new Error(`version ${meta.versionId} failed verification of the proof.`)
       }
@@ -248,23 +247,23 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
   const nextVersion = parseInt(currentVersion) + 1;
   meta.updated = createDate(options.updated);
   const patch = jsonpatch.compare(doc, newDoc);
-  const logEntry: DIDLogEntry = [
+  const logEntry = [
     meta.versionId,
     meta.updated,
     params,
-    {patch: clone(patch)}
+    {patch: clone(patch)},
+    [] as DataIntegrityProof[]
   ];
   const logEntryHash = deriveHash(logEntry);
   logEntry[0] = `${nextVersion}-${logEntryHash}`;
   const signedDoc = await options.signer(newDoc, logEntry[0]);
-  let allProofs = [signedDoc.proof];
-  if (options.witnesses && options.witnesses.length > 0) {
-    const witnessProofs = await collectWitnessProofs(options.witnesses, [...log, logEntry]);
+  logEntry[4] = [signedDoc.proof];
+  if (meta.witnesses && meta.witnesses.length > 0) {
+    const witnessProofs = await collectWitnessProofs(meta.witnesses, [...log, logEntry] as DIDLog);
     if (witnessProofs.length > 0) {
-      allProofs = [...allProofs, ...witnessProofs];
+      logEntry[4] = [...logEntry[4], ...witnessProofs];
     }
   }
-  logEntry.push(allProofs);
   return {
     did,
     doc: newDoc,
