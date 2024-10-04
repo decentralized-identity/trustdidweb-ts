@@ -1,7 +1,7 @@
 import { resolveDID } from '../method';
 import { getFileUrl } from '../utils';
 
-export const getLatestDIDDoc = async ({params: {id}, set}: {params: {id: string;}; set: any;}) => {
+export const getLatestDIDDoc = async ({params: {id}}: {params: {id: string;};}) => {
   try {
     const url = getFileUrl(id);
     const didLog = await (await fetch(url)).text();
@@ -14,6 +14,10 @@ export const getLatestDIDDoc = async ({params: {id}, set}: {params: {id: string;
   }
 }
 
-export const getLogFile = ({params: {scid}}: {params: {scid: string}}) => {
-  return Bun.file(`./test/logs/${scid}/did.jsonl`);
+export const getLogFileForSCID = async ({params: {scid}}: {params: {scid: string}}) => {
+  return await Bun.file(`./src/routes/${scid}/did.jsonl`).text();
+}
+
+export const getLogFileForBase = async () => {
+  return await Bun.file(`./src/routes/.well-known/did.jsonl`).text();
 }

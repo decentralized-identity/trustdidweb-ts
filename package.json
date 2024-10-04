@@ -3,16 +3,17 @@
   "module": "src/index.ts",
   "type": "module",
   "scripts": {
+    "dev": "bun --watch --inspect-wait ./src/resolver.ts",
     "server": "bun --watch ./src/resolver.ts",
     "test": "bun test",
-    "test:watch": "bun test --watch",
-    "test:bail": "bun test --watch --bail",
-    "test:log": "mkdir -p ./test/logs && LOG_RESOLVES=true bun test &> ./test/logs/test-run.txt"
+    "test:watch": "bun test --watch witness",
+    "test:bail": "bun test --watch --bail --verbose",
+    "test:log": "mkdir -p ./test/logs && LOG_RESOLVES=true bun test &> ./test/logs/test-run.txt",
+    "cli": "bun run src/cli.ts"
   },
   "devDependencies": {
-    "bun-types": "latest",
-    "ts-node": "^10.9.2",
-    "tsx": "^4.7.1"
+    "bun-bagel": "^1.1.0",
+    "bun-types": "latest"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"

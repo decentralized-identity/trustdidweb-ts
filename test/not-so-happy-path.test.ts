@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { readLogFromDisk, writeLogToDisk } from "./utils";
+import { readLogFromDisk, writeLogToDisk } from "../src/utils";
 import { createDID, resolveDID, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 

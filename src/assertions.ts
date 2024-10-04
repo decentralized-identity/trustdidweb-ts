@@ -1,22 +1,48 @@
 import * as ed from '@noble/ed25519';
 import { base58btc } from "multiformats/bases/base58";
-import { bytesToHex, createSCID, deriveHash } from "./utils";
+import { bytesToHex, createSCID, deriveHash, resolveVM } from "./utils";
 import { canonicalize } from 'json-canonicalize';
 import { createHash } from 'node:crypto';
 
-export const keyIsAuthorized = (key: string, updateKeys: string[]) => {
+const isKeyAuthorized = (verificationMethod: string, updateKeys: string[]): boolean => {
   if (process.env.IGNORE_ASSERTION_KEY_IS_AUTHORIZED) return true;
-  return updateKeys.includes(key);
-}
 
-export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: string[]) => {
+  if (verificationMethod.startsWith('did:key:')) {
+    const key = verificationMethod.split('did:key:')[1].split('#')[0];
+    return updateKeys.includes(key);
+  }
+  return false;
+};
+
+const isWitnessAuthorized = (verificationMethod: string, witnesses: string[]): boolean => {
+  if (process.env.IGNORE_WITNESS_IS_AUTHORIZED) return true;
+
+  if (verificationMethod.startsWith('did:tdw:')) {
+    const didWithoutFragment = verificationMethod.split('#')[0];
+    return witnesses.includes(didWithoutFragment);
+  }
+  return false;
+};
+
+export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: string[], witnesses: string[] = []) => {
   if (process.env.IGNORE_ASSERTION_DOCUMENT_STATE_IS_VALID) return true;
+
   let i = 0;
   while(i < proofs.length) {
     const proof = proofs[i];
-    if (!keyIsAuthorized(proof.verificationMethod.split('#')[0].split('did:key:').at(-1), updateKeys)) {
-      throw new Error(`key ${proof.verificationMethod} is not authorized to update.`)
+
+    if (proof.verificationMethod.startsWith('did:key:')) {
+      if (!isKeyAuthorized(proof.verificationMethod, updateKeys)) {
+        throw new Error(`Key ${proof.verificationMethod} is not authorized to update.`);
+      }
+    } else if (proof.verificationMethod.startsWith('did:tdw:')) {
+      if (witnesses.length > 0 && !isWitnessAuthorized(proof.verificationMethod, witnesses)) {
+        throw new Error(`Key ${proof.verificationMethod} is not from an authorized witness.`);
+      }
+    } else {
+      throw new Error(`Unsupported verification method: ${proof.verificationMethod}`);
     }
+    
     if (proof.type !== 'DataIntegrityProof') {
       throw new Error(`Unknown proof type ${proof.type}`);
     }
@@ -26,7 +52,11 @@ export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: 
     if (proof.cryptosuite !== 'eddsa-jcs-2022') {
       throw new Error(`Unknown cryptosuite ${proof.cryptosuite}`);
     }
-    const publicKey = base58btc.decode(proof.verificationMethod.split('did:key:')[1].split('#')[0]);
+    const vm = await resolveVM(proof.verificationMethod);
+    if (!vm) {
+      throw new Error(`Verification Method ${proof.verificationMethod} not found`);
+    }
+    const publicKey = base58btc.decode(vm.publicKeyMultibase!);
     if (publicKey[0] !== 237 || publicKey[1] !== 1) {
       throw new Error(`multiKey doesn't include ed25519 header (0xed01)`)
     }
@@ -35,7 +65,6 @@ export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: 
     const dataHash = createHash('sha256').update(canonicalize(doc)).digest();
     const proofHash = createHash('sha256').update(canonicalize(restProof)).digest();
     const input = Buffer.concat([dataHash, proofHash]);
-
     const verified = await ed.verifyAsync(
       bytesToHex(sig),
       bytesToHex(input),

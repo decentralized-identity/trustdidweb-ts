@@ -1,16 +1,4 @@
-import fs from 'node:fs';
 import { deriveHash } from '../src/utils';
-
-export const readLogFromDisk = (path: string): DIDLog => {
-  return fs.readFileSync(path, 'utf8').trim().split('\n').map(l => JSON.parse(l));
-}
-
-export const writeLogToDisk = (path: string, log: DIDLog) => {
-  fs.writeFileSync(path, JSON.stringify(log.shift()) + '\n');
-  for (const entry of log) {
-    fs.appendFileSync(path, JSON.stringify(entry) + '\n');
-  }
-}
 
 export function createMockDIDLog(entries: Partial<DIDLogEntry>[]): DIDLog {
   return entries.map((entry, index) => {

@@ -1,7 +1,7 @@
 import { test, expect, beforeAll } from "bun:test";
 import { createDID, deactivateDID, resolveDID, updateDID } from "../src/method";
 import fs from 'node:fs';
-import { readLogFromDisk } from "./utils";
+import { readLogFromDisk } from "../src/utils";
 import { createVMID, deriveHash } from "../src/utils";
 import { METHOD } from "../src/constants";
 import { createSigner, generateEd25519VerificationMethod, generateX25519VerificationMethod } from "../src/cryptography";

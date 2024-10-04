@@ -63,8 +63,8 @@ describe("did:tdw normative tests", async () => {
     expect(resolved.meta.deactivated).toBe(true);
   });
 
-  test("Resolver encountering 'deactivated': true MUST return deactivated in metadata (negative)", async () => {
+  test("Resolver encountering 'deactivated': false MUST return deactivated in metadata (negative)", async () => {
     const resolved = await resolveDID(newLog1);
-    expect(resolved.meta.deactivated).toBeUndefined();
+    expect(resolved.meta.deactivated).toBeFalse();
   });
 });
