@@ -9,7 +9,7 @@
     "test:watch": "bun test --watch witness",
     "test:bail": "bun test --watch --bail --verbose",
     "test:log": "mkdir -p ./test/logs && LOG_RESOLVES=true bun test &> ./test/logs/test-run.txt",
-    "cli": "bun run src/cli.ts --"
+    "cli": "bun run src/cli.ts"
   },
   "devDependencies": {
     "bun-bagel": "^1.1.0",

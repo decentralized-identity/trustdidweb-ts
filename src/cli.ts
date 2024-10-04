@@ -3,7 +3,7 @@ import { createSigner, generateEd25519VerificationMethod } from './cryptography'
 import { getFileUrl, readLogFromDisk, writeLogToDisk, writeVerificationMethodToEnv } from './utils';
 
 const usage = `
-Usage: bun run cli -- [command] [options]
+Usage: bun run cli [command] [options]
 
 Commands:
   create     Create a new DID
@@ -24,10 +24,10 @@ Options:
   --also-known-as [alias]   Add an alsoKnownAs alias (can be used multiple times)
 
 Examples:
-  bun run cli -- create --domain example.com --portable --witness did:example:witness1 --witness did:example:witness2
-  bun run cli -- resolve --did did:tdw:123456:example.com
-  bun run cli -- update --log ./did.jsonl --output ./updated-did.jsonl --add-vm keyAgreement --service LinkedDomains,https://example.com
-  bun run cli -- deactivate --log ./did.jsonl --output ./deactivated-did.jsonl
+  bun run cli create --domain example.com --portable --witness did:example:witness1 --witness did:example:witness2
+  bun run cli resolve --did did:tdw:123456:example.com
+  bun run cli update --log ./did.jsonl --output ./updated-did.jsonl --add-vm keyAgreement --service LinkedDomains,https://example.com
+  bun run cli deactivate --log ./did.jsonl --output ./deactivated-did.jsonl
 `;
 
 async function main() {
@@ -91,9 +91,9 @@ async function handleCreate(args: string[]) {
   });
 
   console.log('Created DID:', did);
-  console.log('DID Document:', JSON.stringify(doc, null, 2));
-  console.log('Meta:', JSON.stringify(meta, null, 2));
-  console.log('DID Log:', JSON.stringify(log, null, 2));
+  // console.log('DID Document:', JSON.stringify(doc, null, 2));
+  // console.log('Meta:', JSON.stringify(meta, null, 2));
+  // console.log('DID Log:', JSON.stringify(log, null, 2));
 
   if (output) {
     writeLogToDisk(output, log);
