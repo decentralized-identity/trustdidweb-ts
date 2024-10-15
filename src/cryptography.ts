@@ -19,7 +19,7 @@ export const createSigner = (vm: VerificationMethod, useStatic: boolean = true) 
       }
       const dataHash = createHash('sha256').update(canonicalize(doc)).digest();
       const proofHash = createHash('sha256').update(canonicalize(proof)).digest();
-      const input = Buffer.concat([dataHash, proofHash]);
+      const input = Buffer.concat([proofHash, dataHash]);
       const secretKey = base58btc.decode(vm.secretKeyMultibase!);
 
       const output = await ed.signAsync(bytesToHex(input), bytesToHex(secretKey.slice(2, 34)));
@@ -33,20 +33,21 @@ export const createSigner = (vm: VerificationMethod, useStatic: boolean = true) 
   }
 }
 
-export const generateEd25519VerificationMethod = async (purpose: 'authentication' | 'assertionMethod' | 'capabilityInvocation' | 'capabilityDelegation'): Promise<VerificationMethod> => {
+export const generateEd25519VerificationMethod = async (): Promise<VerificationMethod> => {
   const privKey = ed.utils.randomPrivateKey();
   const pubKey = await ed.getPublicKeyAsync(privKey);
   const publicKeyMultibase = base58btc.encode(Buffer.concat([new Uint8Array([0xed, 0x01]), pubKey]));
   const secretKeyMultibase = base58btc.encode(Buffer.concat([new Uint8Array([0x80, 0x26]), privKey]));
 
   return {
-    type: purpose,
+    type: "Multikey",
     publicKeyMultibase,
-    secretKeyMultibase
+    secretKeyMultibase,
+    purpose: 'authentication'
   };
 }
 
-export const generateX25519VerificationMethod = async (purpose: 'keyAgreement'): Promise<VerificationMethod> => {
+export const generateX25519VerificationMethod = async (): Promise<VerificationMethod> => {
   const privKey = ed.utils.randomPrivateKey();
   const pubKey = await ed.getPublicKeyAsync(privKey);
   const x25519PubKey = edwardsToMontgomeryPub(pubKey);
@@ -55,8 +56,9 @@ export const generateX25519VerificationMethod = async (purpose: 'keyAgreement'):
   const secretKeyMultibase = base58btc.encode(Buffer.concat([new Uint8Array([0x82, 0x26]), x25519PrivKey]));
 
   return {
-    type: purpose,
+    type: "Multikey",
     publicKeyMultibase,
-    secretKeyMultibase
+    secretKeyMultibase,
+    purpose: 'keyAgreement'
   }
 }

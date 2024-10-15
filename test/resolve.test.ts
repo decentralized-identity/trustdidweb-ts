@@ -9,9 +9,9 @@ describe("resolveDID with verificationMethod", () => {
   let authKey1: VerificationMethod, authKey2: VerificationMethod, keyAgreementKey: VerificationMethod;
 
   beforeAll(async () => {
-    authKey1 = await generateEd25519VerificationMethod('authentication');
-    authKey2 = await generateEd25519VerificationMethod('authentication');
-    keyAgreementKey = await generateX25519VerificationMethod('keyAgreement');
+    authKey1 = await generateEd25519VerificationMethod();
+    authKey2 = await generateEd25519VerificationMethod();
+    keyAgreementKey = await generateX25519VerificationMethod();
 
     // Create initial DID
     const { did, log } = await createDID({

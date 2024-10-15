@@ -4,8 +4,8 @@ import { createDID, resolveDID, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 
 test("Update with wrong key fails resolution", async () => {
-  const authKey = await generateEd25519VerificationMethod('authentication');
-  const assertionKey = await generateEd25519VerificationMethod('assertionMethod');
+  const authKey = await generateEd25519VerificationMethod();
+  const assertionKey = await generateEd25519VerificationMethod();
   const {doc: newDoc, log: newLog} = await createDID({
     domain: 'example.com',
     updateKeys: [authKey.publicKeyMultibase!],
@@ -23,8 +23,8 @@ test("Update with wrong key fails resolution", async () => {
         signer: createSigner(assertionKey as any),
         context: newDoc['@context'],
         verificationMethods: [
-          await generateEd25519VerificationMethod('authentication'),
-          await generateEd25519VerificationMethod('assertionMethod'),
+          await generateEd25519VerificationMethod(),
+          await generateEd25519VerificationMethod(),
         ]
       });
 

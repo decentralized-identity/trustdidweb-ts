@@ -14,6 +14,7 @@ interface DIDResolutionMeta {
 }
 
 interface DIDDoc {
+  "@context"?: string | string[] | object | object[];
   id?: string;
   controller?: string | string[];
   alsoKnownAs?: string[];
@@ -26,11 +27,12 @@ interface DIDDoc {
   service?: ServiceEndpoint[];
 }
 
-interface DIDOperation {
-  op: string;
-  path: string;
-  value: any;
-}
+// Remove the DIDOperation interface as it's no longer needed
+// interface DIDOperation {
+//   op: string;
+//   path: string;
+//   value: any;
+// }
 
 interface DataIntegrityProof {
   id?: string;
@@ -43,23 +45,23 @@ interface DataIntegrityProof {
   challenge?: string;
 }
 
-type DIDLogEntry = [
-  versionId: string,
-  timestamp: string,
-  params: {
-    method?: string,
-    scid?: string,
-    updateKeys?: string[],
-    prerotation?: boolean,
-    nextKeyHashes?: string[],
-    portable?: boolean,
-    witnesses?: string[],
-    witnessThreshold?: number,
-    deactivated?: boolean
-  },
-  data: {value: any} | {patch: DIDOperation[]},
-  proof?: DataIntegrityProof[]
-];
+interface DIDLogEntry {
+  versionId: string;
+  versionTime: string;
+  parameters: {
+    method?: string;
+    scid?: string;
+    updateKeys?: string[];
+    prerotation?: boolean;
+    nextKeyHashes?: string[];
+    portable?: boolean;
+    witnesses?: string[];
+    witnessThreshold?: number;
+    deactivated?: boolean;
+  };
+  state: DIDDoc; // Change this to specifically hold the DID document
+  proof?: DataIntegrityProof[];
+}
 
 type DIDLog = DIDLogEntry[];
 
@@ -71,7 +73,8 @@ interface ServiceEndpoint {
 
 interface VerificationMethod {
   id?: string;
-  type: 'authentication' | 'assertionMethod' | 'keyAgreement' | 'capabilityInvocation' | 'capabilityDelegation';
+  type: 'Multikey';
+  purpose?: 'authentication' | 'assertionMethod' | 'keyAgreement' | 'capabilityInvocation' | 'capabilityDelegation';
   controller?: string;
   publicKeyJWK?: any;
   publicKeyMultibase?: string;

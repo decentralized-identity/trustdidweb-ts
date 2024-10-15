@@ -78,7 +78,7 @@ async function handleCreate(args: string[]) {
     process.exit(1);
   }
 
-  const authKey = await generateEd25519VerificationMethod('authentication');
+  const authKey = await generateEd25519VerificationMethod();
   const { did, doc, meta, log } = await createDID({
     domain,
     signer: createSigner(authKey),
@@ -160,12 +160,12 @@ async function handleUpdate(args: string[]) {
   }
 
   const log = readLogFromDisk(logFile);
-  const authKey = await generateEd25519VerificationMethod('authentication');
+  const authKey = await generateEd25519VerificationMethod();
   
   const verificationMethods: VerificationMethod[] = [
     authKey,
     ...(addVm?.map(type => ({
-      type,
+      type: "Multikey",
       publicKeyMultibase: authKey.publicKeyMultibase,
     } as VerificationMethod)) || [])
   ];
@@ -203,7 +203,7 @@ async function handleDeactivate(args: string[]) {
   }
 
   const log = readLogFromDisk(logFile);
-  const authKey = await generateEd25519VerificationMethod('authentication');
+  const authKey = await generateEd25519VerificationMethod();
   const { did, doc, meta, log: deactivatedLog } = await deactivateDID({
     log,
     signer: createSigner(authKey),

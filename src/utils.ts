@@ -119,27 +119,27 @@ export const normalizeVMs = (verificationMethod: VerificationMethod[] | undefine
   }
   const all: any = {};
   const authentication = verificationMethod
-    ?.filter(vm => vm.type === 'authentication').map(vm => createVMID(vm, did))
+    ?.filter(vm => vm.purpose === 'authentication').map(vm => createVMID(vm, did))
   if (authentication && authentication?.length > 0) {
     all.authentication = authentication;
   }
   const assertionMethod = verificationMethod
-    ?.filter(vm => vm.type === 'assertionMethod').map(vm => createVMID(vm, did))
+    ?.filter(vm => vm.purpose === 'assertionMethod').map(vm => createVMID(vm, did))
   if (assertionMethod && assertionMethod?.length > 0) {
     all.assertionMethod = assertionMethod;
   }
   const keyAgreement = verificationMethod
-    ?.filter(vm => vm.type === 'keyAgreement').map(vm => createVMID(vm, did));
+    ?.filter(vm => vm.purpose === 'keyAgreement').map(vm => createVMID(vm, did));
   if (keyAgreement && keyAgreement?.length > 0) {
     all.keyAgreement = keyAgreement;
   }
   const capabilityDelegation = verificationMethod
-    ?.filter(vm => vm.type === 'capabilityDelegation').map(vm => createVMID(vm, did));
+    ?.filter(vm => vm.purpose === 'capabilityDelegation').map(vm => createVMID(vm, did));
   if (capabilityDelegation && capabilityDelegation?.length > 0) {
     all.capabilityDelegation = capabilityDelegation;
   }
   const capabilityInvocation = verificationMethod
-  ?.filter(vm => vm.type === 'capabilityInvocation').map(vm => createVMID(vm, did));
+  ?.filter(vm => vm.purpose === 'capabilityInvocation').map(vm => createVMID(vm, did));
   if (capabilityInvocation && capabilityInvocation?.length > 0) {
     all.capabilityInvocation = capabilityInvocation;
   }

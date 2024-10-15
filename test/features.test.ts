@@ -16,10 +16,10 @@ let nonPortableDID: { did: string; doc: any; meta: any; log: DIDLog };
 let portableDID: { did: string; doc: any; meta: any; log: DIDLog };
 
 beforeAll(async () => {
-  authKey1 = await generateEd25519VerificationMethod('authentication');
-  authKey2 = await generateEd25519VerificationMethod('authentication');
-  authKey3 = await generateEd25519VerificationMethod('authentication');
-  authKey4 = await generateEd25519VerificationMethod('authentication');
+  authKey1 = await generateEd25519VerificationMethod();
+  authKey2 = await generateEd25519VerificationMethod();
+  authKey3 = await generateEd25519VerificationMethod();
+  authKey4 = await generateEd25519VerificationMethod();
   
   const {doc: newDoc1, log: newLog1} = await createDID({
     domain: 'example.com',
@@ -98,7 +98,7 @@ test("Resolve DID at time (last)", async () => {
 });
 
 test("Resolve DID at version", async () => {
-  const resolved = await resolveDID(log, {versionId: log[0][0]});
+  const resolved = await resolveDID(log, {versionId: log[0].versionId});
   expect(resolved.meta.versionId.split('-')[0]).toBe('1');
 });
 
@@ -127,29 +127,30 @@ test("Require `nextKeyHashes` if prerotation enabled in Create", async () => {
 test("Require `nextKeyHashes` if prerotation enabled in Read (when enabled in Create)", async () => {
   let err;
   const badLog: DIDLog = [
-    [ "1-5v2bjwgmeqpnuu669zd7956w1w14", "2024-06-06T08:23:06Z", {
-        method: "did:tdw:0.3",
+    {
+      versionId: "1-5v2bjwgmeqpnuu669zd7956w1w14",
+      versionTime: "2024-06-06T08:23:06Z",
+      parameters: {
+        method: "did:tdw:0.4",
         scid: "5v2bjwgmeqpnuu669zd7956w1w14",
         updateKeys: [ "z6Mkr2D4ixckmQx8tAVvXEhMuaMhzahxe61qJt7G9vYyiXiJ" ],
         prerotation: true,
-      }, {
-        value: {
-          "@context": [ "https://www.w3.org/ns/did/v1", "https://w3id.org/security/multikey/v1"
-          ],
-          id: "did:tdw:example.com:5v2bjwgmeqpnuu669zd7956w1w14",
-          controller: "did:tdw:example.com:5v2bjwgmeqpnuu669zd7956w1w14",
-          authentication: [ "did:tdw:example.com:5v2bjwgmeqpnuu669zd7956w1w14#9vYyiXiJ"
-          ],
-          verificationMethod: [
-            {
-              id: "did:tdw:example.com:5v2bjwgmeqpnuu669zd7956w1w14#9vYyiXiJ",
-              controller: "did:tdw:example.com:5v2bjwgmeqpnuu669zd7956w1w14",
-              type: "Multikey",
-              publicKeyMultibase: "z6Mkr2D4ixckmQx8tAVvXEhMuaMhzahxe61qJt7G9vYyiXiJ",
-            }
-          ],
-        },
-      }, [
+      },
+      state: {
+        "@context": [ "https://www.w3.org/ns/did/v1", "https://w3id.org/security/multikey/v1" ],
+        id: "did:tdw:example.com:5v2bjwgmeqpnuu669zd7956w1w14",
+        controller: "did:tdw:example.com:5v2bjwgmeqpnuu669zd7956w1w14",
+        authentication: [ "did:tdw:example.com:5v2bjwgmeqpnuu669zd7956w1w14#9vYyiXiJ" ],
+        verificationMethod: [
+          {
+            id: "did:tdw:example.com:5v2bjwgmeqpnuu669zd7956w1w14#9vYyiXiJ",
+            controller: "did:tdw:example.com:5v2bjwgmeqpnuu669zd7956w1w14",
+            type: "Multikey",
+            publicKeyMultibase: "z6Mkr2D4ixckmQx8tAVvXEhMuaMhzahxe61qJt7G9vYyiXiJ",
+          }
+        ],
+      },
+      proof: [
         {
           type: "DataIntegrityProof",
           cryptosuite: "eddsa-jcs-2022",
@@ -160,7 +161,7 @@ test("Require `nextKeyHashes` if prerotation enabled in Read (when enabled in Cr
           proofValue: "z4wWcu5WXftuvLtZy2jLHiyB8WJoWh8naNu4VFeGdfoBUbFie6mkQYAT2fyLXdbXBpPr7DWdgGatT6NZj7GJGmoBR",
         }
       ]
-    ]
+    }
   ];
   try {
     await resolveDID(badLog)
@@ -198,11 +199,29 @@ test("Require `nextKeyHashes` if prerotation enabled in Update", async () => {
 
 test("Require `nextKeyHashes` if prerotation enabled in Read (when enabled in Update)", async () => {
   let err: any;
-  const mockLog = createMockDIDLog([
-    ['1-mock-hash', createDate(), { method: "did:tdw:0.3", scid: "test-scid" }, { value: { id: "did:tdw:example.com:test-scid" } } ],
-    ['2-mock-hash', createDate().toString(), {prerotation: true}, { patch: [] } ],
-    ['3-mock-hash', createDate().toString(), {}, { patch: [] } ],
-  ]);
+  const mockLog: DIDLog = [
+    {
+      versionId: '1-mock-hash',
+      versionTime: createDate(),
+      parameters: { method: "did:tdw:0.4", scid: "test-scid" },
+      state: { id: "did:tdw:example.com:test-scid" },
+      proof: []
+    },
+    {
+      versionId: '2-mock-hash',
+      versionTime: createDate().toString(),
+      parameters: {prerotation: true},
+      state: { id: "did:tdw:example.com:test-scid" },
+      proof: []
+    },
+    {
+      versionId: '3-mock-hash',
+      versionTime: createDate().toString(),
+      parameters: {updateKeys: ['12312312312321']},
+      state: { id: "did:tdw:example.com:test-scid" },
+      proof: []
+    },
+  ];
   try {
     process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH = "true";
     const {did} = await resolveDID(mockLog)
@@ -246,8 +265,20 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when e
   let err: any;
   process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH = "true";
   const mockLog = createMockDIDLog([
-    ['1-mock-hash', createDate(), { method: "did:tdw:0.3", scid: "test-scid", prerotation: true, nextKeyHashes: ['213123123']}, { value: { id: "did:tdw:example.com:test-scid" } } ],
-    ['2-mock-hash', createDate().toString(), {updateKeys: ['1213'], nextKeyHashes: ['123']}, { patch: [] } ]
+    {
+      versionId: '1-mock-hash',
+      versionTime: createDate(),
+      parameters: { method: "did:tdw:0.4", scid: "test-scid", prerotation: true, nextKeyHashes: ['213123123']},
+      state: { id: "did:tdw:example.com:test-scid" },
+      proof: []
+    },
+    {
+      versionId: '2-mock-hash',
+      versionTime: createDate().toString(),
+      parameters: {updateKeys: ['1213'], nextKeyHashes: ['123']},
+      state: { id: "did:tdw:example.com:test-scid" },
+      proof: []
+    }
   ]);
   try {
     const {did} = await resolveDID(mockLog);
@@ -296,11 +327,31 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Update", asy
 test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when enabled in Update)", async () => {
   let err: any;
   process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH = "true";
-  const mockLog = createMockDIDLog([
-    ['1-mock-hash', createDate(), { method: "did:tdw:0.3", scid: "test-scid" }, { value: { id: "did:tdw:example.com:test-scid" } } ],
-    ['2-mock-hash', createDate().toString(), {prerotation: true, nextKeyHashes: ['1231']}, { patch: [] } ],
-    ['3-mock-hash', createDate().toString(), {updateKeys: ['12312312312321']}, { patch: [] } ],
-  ]);
+  process.env.IGNORE_ASSERTION_DOCUMENT_STATE_IS_VALID = "true";
+  process.env.IGNORE_ASSERTION_HASH_CHAIN_IS_VALID = "true";
+  const mockLog = [
+    {
+      versionId: '1-mock-hash',
+      versionTime: createDate(),
+      parameters: { method: "did:tdw:0.4", scid: "test-scid" },
+      state: { id: "did:tdw:example.com:test-scid" },
+      proof: []
+    },
+    {
+      versionId: '2-mock-hash',
+      versionTime: createDate().toString(),
+      parameters: {prerotation: true, nextKeyHashes: ['1231']},
+      state: { id: "did:tdw:example.com:test-scid" },
+      proof: []
+    },
+    {
+      versionId: '3-mock-hash',
+      versionTime: createDate().toString(),
+      parameters: {updateKeys: ['12312312312321']},
+      state: { id: "did:tdw:example.com:test-scid" },
+      proof: []
+    },
+  ];
   try {
     const {did} = await resolveDID(mockLog);
   } catch(e) {
@@ -310,6 +361,8 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when e
   expect(err).toBeDefined();
   expect(err.message).toContain('invalid updateKeys')
   delete process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH;
+  delete process.env.IGNORE_ASSERTION_DOCUMENT_STATE_IS_VALID;
+  delete process.env.IGNORE_ASSERTION_HASH_CHAIN_IS_VALID;
 });
 
 test("DID log with portable false should not resolve if moved", async () => {
@@ -323,31 +376,18 @@ test("DID log with portable false should not resolve if moved", async () => {
       ...nonPortableDID.doc,
       id: nonPortableDID.did.replace('example.com', 'newdomain.com')
     };
-    // Generate the patch
-    const patch = jsonpatch.compare(nonPortableDID.doc, newDoc);
 
-    // Create the new log entry (without the hash and proof initially)
-    const newEntry = [
-      `${nonPortableDID.log.length + 1}-test`, // Increment the version
-      newTimestamp,
-      { updateKeys: [authKey1.publicKeyMultibase]},
-      { patch },
-      {
-        type: "DataIntegrityProof",
-        cryptosuite: "eddsa-jcs-2022",
-        verificationMethod: authKey1.publicKeyMultibase,
-        created: newTimestamp,
-        proofPurpose: "authentication",
-        challenge: '1-test',
-        proofValue: "z5KDJTw1C2fRwTsxVzP1GXUJgapWeWxvd5VrwLucY4Pr1fwaMHDQsQwH5cPDdwSNUxiR7LHMUMpvhchDABUW8b2wB"
-      }
-    ];
+    const newEntry = {
+      versionId: `${nonPortableDID.log.length + 1}-test`,
+      versionTime: newTimestamp,
+      parameters: { updateKeys: [authKey1.publicKeyMultibase]},
+      state: newDoc
+    };
 
     const badLog: DIDLog = [
       ...nonPortableDID.log as any,
       newEntry
     ];
-
     await resolveDID(badLog);
   } catch (e) {
     err = e;
@@ -408,7 +448,7 @@ test("Create DID with witnesses", async () => {
     proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
     proofPurpose: "authentication"
   } } }});
-  const authKey = await generateEd25519VerificationMethod('authentication');
+  const authKey = await generateEd25519VerificationMethod();
   const { did, doc, meta, log } = await createDID({
     domain: 'example.com',
     signer: createSigner(authKey),
@@ -420,7 +460,7 @@ test("Create DID with witnesses", async () => {
 
   expect(meta.witnesses).toHaveLength(2);
   expect(meta.witnessThreshold).toBe(1);
-  expect(log[0][4]!.length).toBe(3);
+  expect(log[0].proof?.length).toBe(3);
 });
 
 test("Update DID with witnesses", async () => {
@@ -440,7 +480,7 @@ test("Update DID with witnesses", async () => {
     proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
     proofPurpose: "authentication"
   } } }});
-  const authKey = await generateEd25519VerificationMethod('authentication');
+  const authKey = await generateEd25519VerificationMethod();
   const { did, doc, meta, log } = await createDID({
     domain: 'example.com',
     signer: createSigner(authKey),
@@ -458,7 +498,7 @@ test("Update DID with witnesses", async () => {
 
   expect(updatedMeta.witnesses).toHaveLength(2);
   expect(updatedMeta.witnessThreshold).toBe(2);
-  expect(updatedLog[updatedLog.length - 1][4]!.length).toBe(1);
+  expect(updatedLog[updatedLog.length - 1].proof?.length).toBe(3); // 1 main proof + 2 witness proofs
 });
 
 // test("Resolve DID with invalid witness proofs", async () => {

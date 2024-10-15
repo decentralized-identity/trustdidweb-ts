@@ -64,7 +64,7 @@ export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: 
     const sig = base58btc.decode(proofValue);
     const dataHash = createHash('sha256').update(canonicalize(doc)).digest();
     const proofHash = createHash('sha256').update(canonicalize(restProof)).digest();
-    const input = Buffer.concat([dataHash, proofHash]);
+    const input = Buffer.concat([proofHash, dataHash]);
     const verified = await ed.verifyAsync(
       bytesToHex(sig),
       bytesToHex(input),

@@ -46,7 +46,7 @@ const testResolveVersion = async (version: number) => {
 }
 
 beforeAll(async () => {
-  currentAuthKey = await generateEd25519VerificationMethod('authentication');
+  currentAuthKey = await generateEd25519VerificationMethod();
 });
 
 test("Create DID (2 keys + domain)", async () => {
@@ -57,7 +57,7 @@ test("Create DID (2 keys + domain)", async () => {
     portable: true,
     verificationMethods: [
       currentAuthKey!,
-      await generateEd25519VerificationMethod('assertionMethod')
+      await generateEd25519VerificationMethod()
     ]});
   did = newDID;
   currentAuthKey!.controller = did;
@@ -70,10 +70,10 @@ test("Create DID (2 keys + domain)", async () => {
   expect(newDoc.id).toBe(newDID);
   expect(newLog.length).toBe(1);
   
-  expect(newLog[0][0]).toBe(meta.versionId);
-  expect(newLog[0][1]).toBe(meta.created);
-  expect(newLog[0][2].method).toBe(`did:${METHOD}:0.3`);
-  expect(newLog[0][2].portable).toBe(true);
+  expect(newLog[0].versionId).toBe(meta.versionId);
+  expect(newLog[0].versionTime).toBe(meta.created);
+  expect(newLog[0].parameters.method).toBe(`did:${METHOD}:0.4`);
+  expect(newLog[0].parameters.portable).toBe(true);
 
   writeFilesToDisk(newLog, newDoc, 1);
 });
@@ -83,7 +83,7 @@ test("Resolve DID version 1", async () => {
 });
 
 test("Update DID (2 keys, 1 service, change domain)", async () => {
-  const nextAuthKey = await generateEd25519VerificationMethod('authentication');
+  const nextAuthKey = await generateEd25519VerificationMethod();
   const didLog = readLogFromDisk(logFile);
   const context = ["https://identity.foundation/linked-vp/contexts/v1"];
 
@@ -96,7 +96,7 @@ test("Update DID (2 keys, 1 service, change domain)", async () => {
       domain: 'localhost%3A8000',
       verificationMethods: [
         nextAuthKey,
-        await generateEd25519VerificationMethod('assertionMethod')
+        await generateEd25519VerificationMethod()
       ],
       services: [
         {
@@ -124,7 +124,7 @@ test("Resolve DID version 2", async () => {
 });
 
 test("Update DID (3 keys, 2 services)", async () => {
-  const nextAuthKey = await generateEd25519VerificationMethod('authentication');
+  const nextAuthKey = await generateEd25519VerificationMethod();
   const didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
 
@@ -136,8 +136,8 @@ test("Update DID (3 keys, 2 services)", async () => {
       context: [...doc['@context'], 'https://didcomm.org/messaging/v2'],
       verificationMethods: [
         nextAuthKey,
-        await generateEd25519VerificationMethod('assertionMethod'),
-        await generateX25519VerificationMethod('keyAgreement')
+        await generateEd25519VerificationMethod(),
+        await generateX25519VerificationMethod()
       ],
       services: [
         ...doc.service,
@@ -171,7 +171,7 @@ test("Resolve DID version 3", async () => {
 });
 
 test("Update DID (add alsoKnownAs)", async () => {
-  const nextAuthKey = await generateEd25519VerificationMethod('authentication');
+  const nextAuthKey = await generateEd25519VerificationMethod();
   const didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
 
@@ -183,8 +183,8 @@ test("Update DID (add alsoKnownAs)", async () => {
       context: doc['@context'],
       verificationMethods: [
         nextAuthKey,
-        await generateEd25519VerificationMethod('assertionMethod'),
-        await generateX25519VerificationMethod('keyAgreement')
+        await generateEd25519VerificationMethod(),
+        await generateX25519VerificationMethod()
       ],
       services: doc.service,
       alsoKnownAs: ['did:web:example.com']
@@ -204,8 +204,8 @@ test("Resolve DID version 4", async () => {
 test("Update DID (add external controller)", async () => {
   let didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
-  const nextAuthKey = await generateEd25519VerificationMethod('authentication');
-  const externalAuthKey = await generateEd25519VerificationMethod('authentication');
+  const nextAuthKey = await generateEd25519VerificationMethod();
+  const externalAuthKey = await generateEd25519VerificationMethod();
   externalAuthKey.controller = externalAuthKey.publicKeyMultibase;
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
@@ -230,7 +230,7 @@ test("Update DID (add external controller)", async () => {
     didLog = [...updatedLog];
     expect(updatedDID).toBe(did);
     expect(updatedDoc.controller).toContain(externalAuthKey.controller);
-    expect(updatedDoc.authentication[1].slice(-6)).toBe(externalAuthKey.controller!.slice(-6));
+    expect(updatedDoc.authentication[1]).toContain(externalAuthKey.controller!.slice(-6));
     expect(updatedDoc.verificationMethod[1].controller).toBe(externalAuthKey.controller);
 
     expect(meta.versionId.split('-')[0]).toBe("5");
@@ -247,8 +247,8 @@ test("Update DID (enable prerotation)", async () => {
   let didLog = readLogFromDisk(logFile);
   const {doc} = await resolveDID(didLog);
 
-  const nextAuthKey = await generateEd25519VerificationMethod('authentication');
-  const nextNextAuthKey = await generateEd25519VerificationMethod('authentication');
+  const nextAuthKey = await generateEd25519VerificationMethod();
+  const nextNextAuthKey = await generateEd25519VerificationMethod();
   const nextNextKeyHash = deriveHash(nextNextAuthKey.publicKeyMultibase);
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({

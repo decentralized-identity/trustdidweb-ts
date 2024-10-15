@@ -18,11 +18,11 @@ export async function createWitnessProof(log: DIDLog): Promise<{ proof: any } | 
     }
 
     const logEntry = log[log.length - 1];
-    const [versionId, timestamp, params, data] = logEntry;
+    const { versionId, versionTime, parameters, state } = logEntry;
 
     // Create a signer using the witness verification method
     const signer = createSigner({
-      type: 'authentication',
+      type: 'Multikey',
       id: fullVM.id,
       controller: fullVM.controller ?? fullVM.id.split('#')[0],
       publicKeyMultibase: fullVM.publicKeyMultibase,
@@ -30,7 +30,7 @@ export async function createWitnessProof(log: DIDLog): Promise<{ proof: any } | 
     }, false);
     // Sign the log entry
     const signedDoc = await signer(
-      (data as any).value,
+      state,
       versionId
     );
 
