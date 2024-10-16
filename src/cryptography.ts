@@ -1,27 +1,25 @@
 import * as ed from '@noble/ed25519';
 import { edwardsToMontgomeryPub, edwardsToMontgomeryPriv } from '@noble/curves/ed25519';
 
-import { bytesToHex, createDate } from "./utils";
+import { createDate } from "./utils";
 import { base58btc } from "multiformats/bases/base58"
 import { canonicalize } from 'json-canonicalize';
 import { createHash } from 'node:crypto';
 
 export const createSigner = (vm: VerificationMethod, useStatic: boolean = true) => {
-  return async (doc: any, challenge: string) => {
+  return async (doc: any) => {
     try {
       const proof: any = {
         type: 'DataIntegrityProof',
         cryptosuite: 'eddsa-jcs-2022',
-        verificationMethod: useStatic ? `did:key:${vm.publicKeyMultibase}` : vm.id,
+        verificationMethod: useStatic ? `did:key:${vm.publicKeyMultibase}#${vm.publicKeyMultibase}` : vm.id,
         created: createDate(),
-        proofPurpose: 'authentication',
-        challenge
+        proofPurpose: 'authentication'       
       }
       const dataHash = createHash('sha256').update(canonicalize(doc)).digest();
       const proofHash = createHash('sha256').update(canonicalize(proof)).digest();
       const input = Buffer.concat([proofHash, dataHash]);
       const secretKey = base58btc.decode(vm.secretKeyMultibase!).slice(2);
-
       const signature = await ed.signAsync(Buffer.from(input).toString('hex'), Buffer.from(secretKey).toString('hex'));
 
       proof.proofValue = base58btc.encode(signature);

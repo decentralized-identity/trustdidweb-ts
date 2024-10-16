@@ -110,6 +110,11 @@ export const deriveHash = (input: any): string => {
   return base58btc.encode((sha256.digest(encoder.encode(data)) as any).bytes);
 }
 
+export const deriveNextKeyHash = (input: string): string => {
+  const encoder = new TextEncoder();
+  return base58btc.encode((sha256.digest(encoder.encode(input)) as any).bytes);
+}
+
 export const createDIDDoc = async (options: CreateDIDInterface): Promise<{doc: DIDDoc}> => {
   const {controller} = options;
   const {all} = normalizeVMs(options.verificationMethods, controller);

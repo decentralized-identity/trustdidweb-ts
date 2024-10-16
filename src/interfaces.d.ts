@@ -42,7 +42,6 @@ interface DataIntegrityProof {
   created: string;
   proofValue: string;
   proofPurpose: string;
-  challenge?: string;
 }
 
 interface DIDLogEntry {
@@ -85,7 +84,7 @@ interface VerificationMethod {
 interface CreateDIDInterface {
   domain: string;
   updateKeys: string[];
-  signer: (doc: any, challenge: string) => Promise<{proof: any}>;
+  signer: (doc: any) => Promise<{proof: any}>;
   controller?: string;
   context?: string | string[];
   verificationMethods?: VerificationMethod[];
@@ -105,7 +104,7 @@ interface SignDIDDocInterface {
 
 interface UpdateDIDInterface {
   log: DIDLog;
-  signer: (doc: any, challenge: string) => Promise<{proof: any}>;
+  signer: (doc: any) => Promise<{proof: any}>;
   updateKeys?: string[];
   context?: string[];
   controller?: string[];
@@ -123,5 +122,5 @@ interface UpdateDIDInterface {
 
 interface DeactivateDIDInterface {
   log: DIDLog;
-  signer: (doc: any, challenge: string) => Promise<{proof: any}>;
+  signer: (doc: any) => Promise<{proof: any}>;
 }

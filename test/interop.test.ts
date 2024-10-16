@@ -9,7 +9,7 @@ describe("did:tdw interoperability tests", async () => {
     
     expect(resolvedDID).toBe(did);
     expect(meta.versionId).toBe("3-QmYKJo2xvahkwKFKzEybDMzSWGYcPVsX2eGYZTYqY678iK");
-    expect(meta.prerotation).toBe(false);
+    expect(meta.prerotation).toBe(true);
     expect(meta.portable).toBe(false);
   })
 });

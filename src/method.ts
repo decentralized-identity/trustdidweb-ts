@@ -37,34 +37,32 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
   };
   const initialLogEntryHash = deriveHash(initialLogEntry);
   params.scid = await createSCID(initialLogEntryHash);
-  doc = JSON.parse(JSON.stringify(doc).replaceAll(PLACEHOLDER, params.scid));
-
-  initialLogEntry.versionId = `1-${initialLogEntryHash}`;
-  initialLogEntry.parameters = JSON.parse(JSON.stringify(initialLogEntry.parameters).replaceAll(PLACEHOLDER, params.scid));
   initialLogEntry.state = doc;
-
-  const signedDoc = await options.signer(doc, initialLogEntry.versionId);
+  const prelimEntry = JSON.parse(JSON.stringify(initialLogEntry).replaceAll(PLACEHOLDER, params.scid));
+  const logEntryHash2 = deriveHash(prelimEntry);
+  prelimEntry.versionId = `1-${logEntryHash2}`;
+  const signedDoc = await options.signer(prelimEntry);
   let allProofs = [signedDoc.proof];
-  initialLogEntry.proof = allProofs;
+  prelimEntry.proof = allProofs;
 
   if (options.witnesses && options.witnesses.length > 0) {
-    const witnessProofs = await collectWitnessProofs(options.witnesses, [initialLogEntry]);
+    const witnessProofs = await collectWitnessProofs(options.witnesses, [prelimEntry]);
     if (witnessProofs.length > 0) {
       allProofs = [...allProofs, ...witnessProofs];
-      initialLogEntry.proof = allProofs;
+      prelimEntry.proof = allProofs;
     }
   }
   return {
-    did: doc.id!,
-    doc,
+    did: prelimEntry.state.id!,
+    doc: prelimEntry.state,
     meta: {
-      versionId: initialLogEntry.versionId,
-      created: initialLogEntry.versionTime,
-      updated: initialLogEntry.versionTime,
+      versionId: prelimEntry.versionId,
+      created: prelimEntry.versionTime,
+      updated: prelimEntry.versionTime,
       ...params
     },
     log: [
-      initialLogEntry
+      prelimEntry
     ]
   }
 }
@@ -138,20 +136,21 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
       meta.witnesses = parameters.witnesses || meta.witnesses;
       meta.witnessThreshold = parameters.witnessThreshold || meta.witnessThreshold || meta.witnesses.length;
       nextKeyHashes = parameters.nextKeyHashes ?? [];
-      newKeysAreValid(meta.updateKeys, [], nextKeyHashes, false, meta.prerotation === true); 
-      const logEntryHash = deriveHash(
-        {
-          versionId: PLACEHOLDER,
-          versionTime: meta.created,
-          parameters: JSON.parse(JSON.stringify(parameters).replaceAll(meta.scid, PLACEHOLDER)),
-          state: JSON.parse(JSON.stringify(newDoc).replaceAll(meta.scid, PLACEHOLDER))
-        }
-      );
+      newKeysAreValid(meta.updateKeys, [], nextKeyHashes, false, meta.prerotation === true);
+      const logEntry = {
+        versionId: PLACEHOLDER,
+        versionTime: meta.created,
+        parameters: JSON.parse(JSON.stringify(parameters).replaceAll(meta.scid, PLACEHOLDER)),
+        state: JSON.parse(JSON.stringify(newDoc).replaceAll(meta.scid, PLACEHOLDER))
+      };
+      const logEntryHash = deriveHash(logEntry);
       meta.previousLogEntryHash = logEntryHash;
       if (!await scidIsFromHash(meta.scid, logEntryHash)) {
         throw new Error(`SCID '${meta.scid}' not derived from logEntryHash '${logEntryHash}'`);
       }
-      const verified = await documentStateIsValid(newDoc, proof, meta.updateKeys, meta.witnesses);
+      const prelimEntry = JSON.parse(JSON.stringify(logEntry).replaceAll(PLACEHOLDER, meta.scid));
+      const logEntryHash2 = deriveHash(prelimEntry);
+      const verified = await documentStateIsValid({...prelimEntry, versionId: `1-${logEntryHash2}`, proof}, meta.updateKeys, meta.witnesses);
       if (!verified) {
         throw new Error(`version ${meta.versionId} failed verification of the proof.`)
       }
@@ -170,7 +169,7 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
       if (!hashChainValid(`${i+1}-${entryHash}`, entry.versionId)) {
         throw new Error(`Hash chain broken at '${meta.versionId}'`);
       }
-      const verified = await documentStateIsValid(newDoc, proof, meta.updateKeys, meta.witnesses);
+      const verified = await documentStateIsValid(entry, meta.updateKeys, meta.witnesses);
       if (!verified) {
         throw new Error(`version ${meta.versionId} failed verification of the proof.`)
       }
@@ -255,12 +254,11 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
     versionId: meta.versionId,
     versionTime: meta.updated,
     parameters: params,
-    state: clone(newDoc),
-    proof: []
+    state: clone(newDoc)
   };
   const logEntryHash = deriveHash(logEntry);
   logEntry.versionId = `${nextVersion}-${logEntryHash}`;
-  const signedDoc = await options.signer(newDoc, logEntry.versionId);
+  const signedDoc = await options.signer(logEntry);
   logEntry.proof = [signedDoc.proof];
   const newMeta = {
     ...meta,
@@ -306,12 +304,11 @@ export const deactivateDID = async (options: DeactivateDIDInterface): Promise<{d
     versionId: meta.versionId,
     versionTime: meta.updated,
     parameters: {deactivated: true},
-    state: clone(newDoc),
-    proof: []
+    state: clone(newDoc)
   };
   const logEntryHash = deriveHash(logEntry);
   logEntry.versionId = `${nextVersion}-${logEntryHash}`;
-  const signedDoc = await options.signer(newDoc, logEntry.versionId);
+  const signedDoc = await options.signer(logEntry);
   logEntry.proof = [signedDoc.proof];
   return {
     did,

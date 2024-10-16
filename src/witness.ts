@@ -28,11 +28,8 @@ export async function createWitnessProof(log: DIDLog): Promise<{ proof: any } | 
       publicKeyMultibase: fullVM.publicKeyMultibase,
       secretKeyMultibase: fullVM.secretKeyMultibase
     }, false);
-    // Sign the log entry
-    const signedDoc = await signer(
-      state,
-      versionId
-    );
+    const {proof, ...entry} = logEntry;
+    const signedDoc = await signer(entry);
 
     return {
       proof: signedDoc.proof

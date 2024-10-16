@@ -6,7 +6,6 @@ const app = new Elysia()
   .get('/health', 'ok')
   .get('/.well-known/did.jsonl', () => getLogFileForBase())
   .post('/witness', async ({body}) => {
-    console.log('log', (body as any).log);
     const result = await createWitnessProof((body as any).log);
     console.log(`Signed with VM`, (result as any).proof.verificationMethod)
     if ('error' in result) {

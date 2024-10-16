@@ -1,6 +1,5 @@
-import * as jsonpatch from 'fast-json-patch/index.mjs';
 import { beforeAll, expect, test} from "bun:test";
-import { createDID, resolveDID, resolveDIDFromLog, updateDID } from "../src/method";
+import { createDID, resolveDIDFromLog, updateDID } from "../src/method";
 import { mock } from "bun-bagel";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 import { deriveHash, createDate, clone } from "../src/utils";
@@ -78,6 +77,7 @@ beforeAll(async () => {
 });
 
 test("Resolve DID at time (first)", async () => {
+  console.error('log', log)
   const resolved = await resolveDIDFromLog(log, {versionTime: new Date('2021-01-15T08:32:55Z')});
   expect(resolved.meta.versionId.split('-')[0]).toBe('1');
 });
@@ -157,7 +157,6 @@ test("Require `nextKeyHashes` if prerotation enabled in Read (when enabled in Cr
           verificationMethod: "did:key:z6Mkr2D4ixckmQx8tAVvXEhMuaMhzahxe61qJt7G9vYyiXiJ",
           created: "2024-06-06T08:23:06Z",
           proofPurpose: "authentication",
-          challenge: "yfdr7xm1xf4e8eryw97r3e2yvey4gd13a93me7c6q3r7gfam3bh0",
           proofValue: "z4wWcu5WXftuvLtZy2jLHiyB8WJoWh8naNu4VFeGdfoBUbFie6mkQYAT2fyLXdbXBpPr7DWdgGatT6NZj7GJGmoBR",
         }
       ]
@@ -408,7 +407,7 @@ test("updateDID should not allow moving a non-portable DID", async () => {
       updateKeys: [authKey1.publicKeyMultibase!],
       domain: newDomain,
       updated: newTimestamp,
-      signer: async (doc: any, challenge: string) => ({
+      signer: async (doc: any) => ({
         ...doc,
         proof: {
           type: "DataIntegrityProof",
@@ -416,7 +415,6 @@ test("updateDID should not allow moving a non-portable DID", async () => {
           verificationMethod: `did:key:${authKey1.publicKeyMultibase}`,
           created: newTimestamp,
           proofPurpose: "authentication",
-          challenge,
           proofValue: "z5KDJTw1C2fRwTsxVzP1GXUJgapWeWxvd5VrwLucY4Pr1fwaMHDQsQwH5cPDdwSNUxiR7LHMUMpvhchDABUW8b2wB"
         }
       })
