@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { readLogFromDisk, writeLogToDisk } from "../src/utils";
-import { createDID, resolveDID, updateDID } from "../src/method";
+import { createDID, resolveDIDFromLog, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 
 test("Update with wrong key fails resolution", async () => {
@@ -38,7 +38,7 @@ test("Update with wrong key fails resolution", async () => {
   const badLog = readLogFromDisk('./test/fixtures/not-authorized.log');
   let result;
   try {
-    result = await resolveDID(badLog);
+    result = await resolveDIDFromLog(badLog);
   } catch(e: any) {
     err = e;
   }

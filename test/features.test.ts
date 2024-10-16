@@ -1,6 +1,6 @@
 import * as jsonpatch from 'fast-json-patch/index.mjs';
 import { beforeAll, expect, test} from "bun:test";
-import { createDID, resolveDID, updateDID } from "../src/method";
+import { createDID, resolveDID, resolveDIDFromLog, updateDID } from "../src/method";
 import { mock } from "bun-bagel";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 import { deriveHash, createDate, clone } from "../src/utils";
@@ -78,32 +78,32 @@ beforeAll(async () => {
 });
 
 test("Resolve DID at time (first)", async () => {
-  const resolved = await resolveDID(log, {versionTime: new Date('2021-01-15T08:32:55Z')});
+  const resolved = await resolveDIDFromLog(log, {versionTime: new Date('2021-01-15T08:32:55Z')});
   expect(resolved.meta.versionId.split('-')[0]).toBe('1');
 });
 
 test("Resolve DID at time (second)", async () => {
-  const resolved = await resolveDID(log, {versionTime: new Date('2021-02-15T08:32:55Z')});
+  const resolved = await resolveDIDFromLog(log, {versionTime: new Date('2021-02-15T08:32:55Z')});
   expect(resolved.meta.versionId.split('-')[0]).toBe('2');
 });
 
 test("Resolve DID at time (third)", async () => {
-  const resolved = await resolveDID(log, {versionTime: new Date('2021-03-15T08:32:55Z')});
+  const resolved = await resolveDIDFromLog(log, {versionTime: new Date('2021-03-15T08:32:55Z')});
   expect(resolved.meta.versionId.split('-')[0]).toBe('3');
 });
 
 test("Resolve DID at time (last)", async () => {
-  const resolved = await resolveDID(log, {versionTime: new Date('2021-04-15T08:32:55Z')});
+  const resolved = await resolveDIDFromLog(log, {versionTime: new Date('2021-04-15T08:32:55Z')});
   expect(resolved.meta.versionId.split('-')[0]).toBe('4');
 });
 
 test("Resolve DID at version", async () => {
-  const resolved = await resolveDID(log, {versionId: log[0].versionId});
+  const resolved = await resolveDIDFromLog(log, {versionId: log[0].versionId});
   expect(resolved.meta.versionId.split('-')[0]).toBe('1');
 });
 
 test("Resolve DID latest", async () => {
-  const resolved = await resolveDID(log);
+  const resolved = await resolveDIDFromLog(log);
   expect(resolved.meta.versionId.split('-')[0]).toBe('4');
 });
 
@@ -164,7 +164,7 @@ test("Require `nextKeyHashes` if prerotation enabled in Read (when enabled in Cr
     }
   ];
   try {
-    await resolveDID(badLog)
+    await resolveDIDFromLog(badLog)
   } catch(e) {
     err = e;
   }
@@ -224,7 +224,7 @@ test("Require `nextKeyHashes` if prerotation enabled in Read (when enabled in Up
   ];
   try {
     process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH = "true";
-    const {did} = await resolveDID(mockLog)
+    const {did} = await resolveDIDFromLog(mockLog)
   } catch(e) {
     err = e;
   }
@@ -281,7 +281,7 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when e
     }
   ]);
   try {
-    const {did} = await resolveDID(mockLog);
+    const {did} = await resolveDIDFromLog(mockLog);
   } catch(e) {
     err = e;
   }
@@ -353,7 +353,7 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when e
     },
   ];
   try {
-    const {did} = await resolveDID(mockLog);
+    const {did} = await resolveDIDFromLog(mockLog);
   } catch(e) {
     err = e;
   }
@@ -388,7 +388,7 @@ test("DID log with portable false should not resolve if moved", async () => {
       ...nonPortableDID.log as any,
       newEntry
     ];
-    await resolveDID(badLog);
+    await resolveDIDFromLog(badLog);
   } catch (e) {
     err = e;
   }
@@ -508,5 +508,5 @@ test("Update DID with witnesses", async () => {
 //   const invalidLog = [...initialLog];
 //   invalidLog[invalidLog.length - 1][5] = []; // Empty witness proofs
 
-//   await expect(resolveDID(invalidLog)).rejects.toThrow('Invalid witness proofs');
+//   await expect(resolveDIDFromLog(invalidLog)).rejects.toThrow('Invalid witness proofs');
 // });

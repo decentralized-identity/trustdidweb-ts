@@ -3,7 +3,7 @@ import * as base58btc from '@interop/base58-universal'
 import { canonicalize } from 'json-canonicalize';
 import { nanoid } from 'nanoid';
 import { sha256 } from 'multiformats/hashes/sha2'
-import { resolveDID } from './method';
+import { resolveDIDFromLog } from './method';
 import { join } from 'path';
 
 export const readLogFromDisk = (path: string): DIDLog => {
@@ -75,6 +75,23 @@ export const getFileUrl = (id: string) => {
     return `${baseUrl}/did.jsonl`;
   }
   return `${baseUrl}/.well-known/did.jsonl`;
+}
+
+export async function fetchLogFromIdentifier(identifier: string): Promise<DIDLog> {
+  try {
+    const url = getFileUrl(identifier);
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const text = await response.text();
+    return text.trim().split('\n').map(line => JSON.parse(line));
+  } catch (error) {
+    console.error('Error fetching DID log:', error);
+    throw error;
+  }
 }
 
 export const createDate = (created?: Date | string) => new Date(created ?? Date.now()).toISOString().slice(0,-5)+'Z';
@@ -214,7 +231,7 @@ export const resolveVM = async (vm: string) => {
       const url = getFileUrl(vm.split('#')[0]);
       const didLog = await (await fetch(url)).text();
       const logEntries: DIDLog = didLog.trim().split('\n').map(l => JSON.parse(l));
-      const {doc} = await resolveDID(logEntries, {verificationMethod: vm});
+      const {doc} = await resolveDIDFromLog(logEntries, {verificationMethod: vm});
       return findVerificationMethod(doc, vm);
     }
     throw new Error(`Verification method ${vm} not found`);

@@ -1,19 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { resolveDID } from "../src";
+import { resolveDID } from "../src/method";
 
-describe("did:tdw normative tests", async () => {
-  test.skip("anywhy.ca", async () => {
-    const didLog: DIDLog = [
-      {"versionId": "1-QmctuFEmT1UMHT9113PS49PVXZeQ8M3PRYipwnGcgYRukg", "versionTime": "2024-10-04T23:08:03Z", "parameters": {"prerotation": true, "updateKeys": ["z6MkkvxtZb27KcpQEADowqebVPsbJFHpkMhroKwMkChSoR2c"], "nextKeyHashes": ["QmUMsZXktbaxXv62gxEhmRLmhPDPvuyqMm5uvNDSMYrnYH"], "method": "did:tdw:0.4", "scid": "QmRyZ5pcm12CmMs4UhuN3h3Vr7Z7qRqHkxjNzUQpygPe25"}, "state": {"@context": ["https://www.w3.org/ns/did/v1"], "id": "did:tdw:QmRyZ5pcm12CmMs4UhuN3h3Vr7Z7qRqHkxjNzUQpygPe25:anywhy.ca"}, "proof": [{"type": "DataIntegrityProof", "cryptosuite": "eddsa-jcs-2022", "verificationMethod": "did:key:z6MkkvxtZb27KcpQEADowqebVPsbJFHpkMhroKwMkChSoR2c#z6MkkvxtZb27KcpQEADowqebVPsbJFHpkMhroKwMkChSoR2c", "created": "2024-10-04T23:08:03Z", "proofPurpose": "authentication", "proofValue": "z55gTeLoGXb8m9C6bbacBDfwLAqTK3fhUocEMhidaHQKumt87grSWtMSurTFPqQcedE4Hy4sB5hqQHQ65qundoC51"}]},
-      {"versionId": "2-QmSwNwdzqWyTWVP1NdByPS1CZ6u6mTbPXsfaVwVwu4J1P5", "versionTime": "2024-10-04T23:08:04Z", "parameters": {"updateKeys": ["z6MkouumtJcMCsPTQnvW1GYEPQin9oCr3AAh9xq7Vjg1YaYC"], "nextKeyHashes": ["Qmbqrnde5qneb7ToxGHpy3nnKWDy8yKyf3AHXTUrAmqtZb"]}, "state": {"@context": ["https://www.w3.org/ns/did/v1"], "id": "did:tdw:QmRyZ5pcm12CmMs4UhuN3h3Vr7Z7qRqHkxjNzUQpygPe25:anywhy.ca"}, "proof": [{"type": "DataIntegrityProof", "cryptosuite": "eddsa-jcs-2022", "verificationMethod": "did:key:z6MkkvxtZb27KcpQEADowqebVPsbJFHpkMhroKwMkChSoR2c#z6MkkvxtZb27KcpQEADowqebVPsbJFHpkMhroKwMkChSoR2c", "created": "2024-10-04T23:08:04Z", "proofPurpose": "authentication", "proofValue": "z3ZWTNNLUmDaonS3vecPgg5zsQZvAsrYaikiD21h3pyZa4qKMAuSAP6zLN1oCKvtmVMrq8THnvk5ZTMJnGQLyJCFG"}]},
-      {"versionId": "3-QmYKJo2xvahkwKFKzEybDMzSWGYcPVsX2eGYZTYqY678iK", "versionTime": "2024-10-04T23:08:04Z", "parameters": {}, "state": {"@context": ["https://www.w3.org/ns/did/v1", "https://w3id.org/security/multikey/v1", "https://identity.foundation/.well-known/did-configuration/v1", "https://identity.foundation/linked-vp/contexts/v1"], "id": "did:tdw:QmRyZ5pcm12CmMs4UhuN3h3Vr7Z7qRqHkxjNzUQpygPe25:anywhy.ca", "authentication": ["did:tdw:QmRyZ5pcm12CmMs4UhuN3h3Vr7Z7qRqHkxjNzUQpygPe25:anywhy.ca#z6Mkjzow85ivdxYJ5EncBsL6pP5bgkEPuEz1yHkTcGNTRgGd"], "assertionMethod": ["did:tdw:QmRyZ5pcm12CmMs4UhuN3h3Vr7Z7qRqHkxjNzUQpygPe25:anywhy.ca#z6Mkjzow85ivdxYJ5EncBsL6pP5bgkEPuEz1yHkTcGNTRgGd"], "verificationMethod": [{"id": "did:tdw:QmRyZ5pcm12CmMs4UhuN3h3Vr7Z7qRqHkxjNzUQpygPe25:anywhy.ca#z6Mkjzow85ivdxYJ5EncBsL6pP5bgkEPuEz1yHkTcGNTRgGd", "controller": "did:tdw:QmRyZ5pcm12CmMs4UhuN3h3Vr7Z7qRqHkxjNzUQpygPe25:anywhy.ca", "type": "Multikey", "publicKeyMultibase": "z6Mkjzow85ivdxYJ5EncBsL6pP5bgkEPuEz1yHkTcGNTRgGd"}], "service": [{"id": "did:tdw:QmRyZ5pcm12CmMs4UhuN3h3Vr7Z7qRqHkxjNzUQpygPe25:anywhy.ca#domain", "type": "LinkedDomains", "serviceEndpoint": "https://anywhy.ca"}, {"id": "did:tdw:QmRyZ5pcm12CmMs4UhuN3h3Vr7Z7qRqHkxjNzUQpygPe25:anywhy.ca#whois", "type": "LinkedVerifiablePresentation", "serviceEndpoint": "https://anywhy.ca/.well-known/whois.vc"}]}, "proof": [{"type": "DataIntegrityProof", "cryptosuite": "eddsa-jcs-2022", "verificationMethod": "did:key:z6MkouumtJcMCsPTQnvW1GYEPQin9oCr3AAh9xq7Vjg1YaYC#z6MkouumtJcMCsPTQnvW1GYEPQin9oCr3AAh9xq7Vjg1YaYC", "created": "2024-10-04T23:08:04Z", "proofPurpose": "authentication", "proofValue": "z236QkodMqmnQs9Jpryu8Rtgs6RKFE1EdTEqP9rS1UckYB7TMHctSNU2eiCzjKyVqX9Au1B5N3VxXMetjsrsUySoa"}]}
-    ];
+describe("did:tdw interoperability tests", async () => {
+  test("anywhy.ca", async () => {
+    const did = "did:tdw:QmRyZ5pcm12CmMs4UhuN3h3Vr7Z7qRqHkxjNzUQpygPe25:anywhy.ca";
+
+    const {did: resolvedDID, meta} = await resolveDID(did);
     
-    const res = await resolveDID(didLog);
-
-    expect(res.did).toBe("did:tdw:QmRyZ5pcm12CmMs4UhuN3h3Vr7Z7qRqHkxjNzUQpygPe25:anywhy.ca");
-    expect(res.meta.versionId).toBe("3-QmYKJo2xvahkwKFKzEybDMzSWGYcPVsX2eGYZTYqY678iK");
-    expect(res.meta.prerotation).toBe(false);
-    expect(res.meta.portable).toBe(false);
+    expect(resolvedDID).toBe(did);
+    expect(meta.versionId).toBe("3-QmYKJo2xvahkwKFKzEybDMzSWGYcPVsX2eGYZTYqY678iK");
+    expect(meta.prerotation).toBe(false);
+    expect(meta.portable).toBe(false);
   })
 });

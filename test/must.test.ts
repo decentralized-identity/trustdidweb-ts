@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, test } from "bun:test";
-import { createDID, deactivateDID, resolveDID, updateDID } from "../src/method";
+import { createDID, deactivateDID, resolveDIDFromLog, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 
 
@@ -24,7 +24,7 @@ describe("did:tdw normative tests", async () => {
   });
 
   test("Resolve MUST process the DID Log correctly (positive)", async () => {
-    const resolved = await resolveDID(newLog1);
+    const resolved = await resolveDIDFromLog(newLog1);
     expect(resolved.meta.versionId.split('-')[0]).toBe("1");
   });
 
@@ -32,7 +32,7 @@ describe("did:tdw normative tests", async () => {
     let err;
     const malformedLog = "malformed log content";
     try {
-      await resolveDID(malformedLog as any);
+      await resolveDIDFromLog(malformedLog as any);
     } catch (e) {
       err = e;
     }
@@ -59,12 +59,12 @@ describe("did:tdw normative tests", async () => {
       log: newLog1,
       signer: createSigner(authKey1)
     });
-    const resolved = await resolveDID(updatedLog);
+    const resolved = await resolveDIDFromLog(updatedLog);
     expect(resolved.meta.deactivated).toBe(true);
   });
 
   test("Resolver encountering 'deactivated': false MUST return deactivated in metadata (negative)", async () => {
-    const resolved = await resolveDID(newLog1);
+    const resolved = await resolveDIDFromLog(newLog1);
     expect(resolved.meta.deactivated).toBeFalse();
   });
 });

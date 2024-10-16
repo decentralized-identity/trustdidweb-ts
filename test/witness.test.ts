@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, test } from "bun:test";
-import { createDID, resolveDID, updateDID } from "../src/method";
+import { createDID, resolveDIDFromLog, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 
 let WITNESS_SCID = "";
@@ -59,7 +59,7 @@ const runWitnessTests = async () => {
     beforeAll(async () => {
       authKey = await generateEd25519VerificationMethod();
       const didLog = await getWitnessDIDLog();
-      const {did, meta} = await resolveDID(didLog as DIDLog);
+      const {did, meta} = await resolveDIDFromLog(didLog as DIDLog);
       WITNESS_SCID = meta.scid;
       console.log(`Witness DID ${did} found`);
     });
@@ -74,7 +74,7 @@ const runWitnessTests = async () => {
         witnesses: [`did:tdw:${WITNESS_SCID}:${WITNESS_DOMAIN}`],
         witnessThreshold: 1
       });
-      const resolved = await resolveDID(initialDID.log);
+      const resolved = await resolveDIDFromLog(initialDID.log);
 
       expect(resolved.did).toBe(initialDID.did);
       expect(initialDID.meta.witnesses).toHaveLength(1);

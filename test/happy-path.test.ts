@@ -1,5 +1,5 @@
 import { test, expect, beforeAll } from "bun:test";
-import { createDID, deactivateDID, resolveDID, updateDID } from "../src/method";
+import { createDID, deactivateDID, resolveDIDFromLog, updateDID } from "../src/method";
 import fs from 'node:fs';
 import { readLogFromDisk } from "../src/utils";
 import { createVMID, deriveHash } from "../src/utils";
@@ -34,7 +34,7 @@ const writeFilesToDisk = (_log: DIDLog, _doc: any, version: number) => {
 
 const testResolveVersion = async (version: number) => {
   const log = readLogFromDisk(logFile);
-  const {did: resolvedDID, doc: resolvedDoc, meta} = await resolveDID(log, {versionNumber: version});
+  const {did: resolvedDID, doc: resolvedDoc, meta} = await resolveDIDFromLog(log, {versionNumber: version});
 
   if(verboseMode) {
     console.log(`Resolved DID Document: ${version}`, resolvedDID, resolvedDoc);
@@ -126,7 +126,7 @@ test("Resolve DID version 2", async () => {
 test("Update DID (3 keys, 2 services)", async () => {
   const nextAuthKey = await generateEd25519VerificationMethod();
   const didLog = readLogFromDisk(logFile);
-  const {doc} = await resolveDID(didLog);
+  const {doc} = await resolveDIDFromLog(didLog);
 
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
@@ -173,7 +173,7 @@ test("Resolve DID version 3", async () => {
 test("Update DID (add alsoKnownAs)", async () => {
   const nextAuthKey = await generateEd25519VerificationMethod();
   const didLog = readLogFromDisk(logFile);
-  const {doc} = await resolveDID(didLog);
+  const {doc} = await resolveDIDFromLog(didLog);
 
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
@@ -203,7 +203,7 @@ test("Resolve DID version 4", async () => {
 
 test("Update DID (add external controller)", async () => {
   let didLog = readLogFromDisk(logFile);
-  const {doc} = await resolveDID(didLog);
+  const {doc} = await resolveDIDFromLog(didLog);
   const nextAuthKey = await generateEd25519VerificationMethod();
   const externalAuthKey = await generateEd25519VerificationMethod();
   externalAuthKey.controller = externalAuthKey.publicKeyMultibase;
@@ -245,7 +245,7 @@ test("Resolve DID version 5", async () => {
 
 test("Update DID (enable prerotation)", async () => {
   let didLog = readLogFromDisk(logFile);
-  const {doc} = await resolveDID(didLog);
+  const {doc} = await resolveDIDFromLog(didLog);
 
   const nextAuthKey = await generateEd25519VerificationMethod();
   const nextNextAuthKey = await generateEd25519VerificationMethod();
@@ -286,7 +286,7 @@ test("Resolve DID version 6", async () => {
 
 test("Deactivate DID", async () => {
   let didLog = readLogFromDisk(logFile);
-  const {doc} = await resolveDID(didLog);
+  const {doc} = await resolveDIDFromLog(didLog);
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await deactivateDID({
       log: didLog,

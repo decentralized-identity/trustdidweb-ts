@@ -1,5 +1,5 @@
 import { createSigner } from './cryptography';
-import { resolveDID } from './method';
+import { resolveDIDFromLog } from './method';
 
 // Parse the DID_VERIFICATION_METHODS environment variable
 const verificationMethods = JSON.parse(Buffer.from(process.env.DID_VERIFICATION_METHODS || 'W10=', 'base64').toString('utf8'));
@@ -9,7 +9,7 @@ export async function createWitnessProof(log: DIDLog): Promise<{ proof: any } | 
   }
 
   try {
-    const { did, doc, meta } = await resolveDID(log);
+    const { did, doc, meta } = await resolveDIDFromLog(log);
 
     // Find the corresponding verification method with secret key
     const fullVM = verificationMethods.find((vm: any) => meta.witnesses.includes(vm.id.split('#')[0]));

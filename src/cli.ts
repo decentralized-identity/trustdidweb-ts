@@ -1,6 +1,6 @@
-import { createDID, resolveDID, updateDID, deactivateDID } from './method';
+import { createDID, resolveDID, updateDID, deactivateDID, resolveDIDFromLog } from './method';
 import { createSigner, generateEd25519VerificationMethod } from './cryptography';
-import { getFileUrl, readLogFromDisk, writeLogToDisk, writeVerificationMethodToEnv } from './utils';
+import { fetchLogFromIdentifier, getFileUrl, readLogFromDisk, writeLogToDisk, writeVerificationMethodToEnv } from './utils';
 
 const usage = `
 Usage: bun run cli [command] [options]
@@ -114,7 +114,7 @@ async function handleResolve(args: string[]) {
 
   try {
     const log = await fetchLogFromIdentifier(didIdentifier);
-    const { did, doc, meta } = await resolveDID(log);
+    const { did, doc, meta } = await resolveDIDFromLog(log);
 
     console.log('Resolved DID:', did);
     console.log('DID Document:', JSON.stringify(doc, null, 2));
@@ -122,24 +122,6 @@ async function handleResolve(args: string[]) {
   } catch (error) {
     console.error('Error resolving DID:', error);
     process.exit(1);
-  }
-}
-
-async function fetchLogFromIdentifier(identifier: string): Promise<DIDLog> {
-  try {
-    const url = getFileUrl(identifier);
-    console.log(url, identifier)
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const text = await response.text();
-    return text.trim().split('\n').map(line => JSON.parse(line));
-  } catch (error) {
-    console.error('Error fetching DID log:', error);
-    throw error;
   }
 }
 

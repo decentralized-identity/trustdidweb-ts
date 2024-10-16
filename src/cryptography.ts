@@ -20,15 +20,15 @@ export const createSigner = (vm: VerificationMethod, useStatic: boolean = true) 
       const dataHash = createHash('sha256').update(canonicalize(doc)).digest();
       const proofHash = createHash('sha256').update(canonicalize(proof)).digest();
       const input = Buffer.concat([proofHash, dataHash]);
-      const secretKey = base58btc.decode(vm.secretKeyMultibase!);
+      const secretKey = base58btc.decode(vm.secretKeyMultibase!).slice(2);
 
-      const output = await ed.signAsync(bytesToHex(input), bytesToHex(secretKey.slice(2, 34)));
+      const signature = await ed.signAsync(Buffer.from(input).toString('hex'), Buffer.from(secretKey).toString('hex'));
 
-      proof.proofValue = base58btc.encode(output);
+      proof.proofValue = base58btc.encode(signature);
       return {...doc, proof};
     } catch (e: any) {
       console.error(e)
-      throw new Error(`Document signing failure: ${e.details}`)
+      throw new Error(`Document signing failure: ${e.message || e}`)
     }
   }
 }

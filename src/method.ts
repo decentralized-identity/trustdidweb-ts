@@ -1,4 +1,4 @@
-import { clone, collectWitnessProofs, createDate, createDIDDoc, createSCID, deriveHash, findVerificationMethod, normalizeVMs } from "./utils";
+import { clone, collectWitnessProofs, createDate, createDIDDoc, createSCID, deriveHash, fetchLogFromIdentifier, findVerificationMethod, normalizeVMs } from "./utils";
 import { BASE_CONTEXT, METHOD, PLACEHOLDER, PROTOCOL } from './constants';
 import { documentStateIsValid, hashChainValid, newKeysAreValid, scidIsFromHash } from './assertions';
 
@@ -69,7 +69,17 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
   }
 }
 
-export const resolveDID = async (log: DIDLog, options: {
+export const resolveDID = async (did: string, options: {
+  versionNumber?: number, 
+  versionId?: string, 
+  versionTime?: Date,
+  verificationMethod?: string
+} = {}): Promise<{did: string, doc: any, meta: DIDResolutionMeta}> => {
+  const log = await fetchLogFromIdentifier(did);
+  return resolveDIDFromLog(log, options);
+}
+
+export const resolveDIDFromLog = async (log: DIDLog, options: {
   versionNumber?: number, 
   versionId?: string, 
   versionTime?: Date,
@@ -212,7 +222,7 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
     log, updateKeys, context, verificationMethods, services, alsoKnownAs,
     controller, domain, nextKeyHashes, prerotation, witnesses, witnessThreshold
   } = options;
-  let {did, doc, meta} = await resolveDID(log);
+  let {did, doc, meta} = await resolveDIDFromLog(log);
   newKeysAreValid(updateKeys ?? [], meta.nextKeyHashes ?? [], nextKeyHashes ?? [], meta.prerotation === true, prerotation === true);
 
   if (domain) {
@@ -279,7 +289,7 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
 
 export const deactivateDID = async (options: DeactivateDIDInterface): Promise<{did: string, doc: any, meta: DIDResolutionMeta, log: DIDLog}> => {
   const {log} = options;
-  let {did, doc, meta} = await resolveDID(log);
+  let {did, doc, meta} = await resolveDIDFromLog(log);
   const newDoc = {
     ...doc,
     authentication: [],
