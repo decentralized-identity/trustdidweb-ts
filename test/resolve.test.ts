@@ -1,17 +1,17 @@
 import { describe, expect, test, beforeAll } from "bun:test";
-import { createDID, resolveDID, updateDID } from "../src/method";
+import { createDID, resolveDIDFromLog, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod, generateX25519VerificationMethod } from "../src/cryptography";
 import { clone } from "../src/utils";
 
-describe("resolveDID with verificationMethod", () => {
+describe("resolveDIDFromLog with verificationMethod", () => {
   let initialDID: string;
   let fullLog: DIDLog;
   let authKey1: VerificationMethod, authKey2: VerificationMethod, keyAgreementKey: VerificationMethod;
 
   beforeAll(async () => {
-    authKey1 = await generateEd25519VerificationMethod('authentication');
-    authKey2 = await generateEd25519VerificationMethod('authentication');
-    keyAgreementKey = await generateX25519VerificationMethod('keyAgreement');
+    authKey1 = await generateEd25519VerificationMethod();
+    authKey2 = await generateEd25519VerificationMethod();
+    keyAgreementKey = await generateX25519VerificationMethod();
 
     // Create initial DID
     const { did, log } = await createDID({
@@ -47,7 +47,7 @@ describe("resolveDID with verificationMethod", () => {
 
   test("Resolve DID with initial authentication key", async () => {
     const vmId = `${initialDID}#${authKey1.publicKeyMultibase!.slice(-8)}`;
-    const { doc, meta } = await resolveDID(fullLog, { verificationMethod: vmId });
+    const { doc, meta } = await resolveDIDFromLog(fullLog, { verificationMethod: vmId });
     
     expect(doc.verificationMethod).toHaveLength(1);
     expect(doc.verificationMethod[0].publicKeyMultibase).toBe(authKey1.publicKeyMultibase);
@@ -56,7 +56,7 @@ describe("resolveDID with verificationMethod", () => {
 
   test("Resolve DID with second authentication key", async () => {
     const vmId = `${initialDID}#${authKey2.publicKeyMultibase!.slice(-8)}`;
-    const { doc, meta } = await resolveDID(fullLog, { verificationMethod: vmId });
+    const { doc, meta } = await resolveDIDFromLog(fullLog, { verificationMethod: vmId });
     
     expect(doc.verificationMethod).toHaveLength(2);
     expect(doc.verificationMethod[1].publicKeyMultibase).toBe(authKey2.publicKeyMultibase);
@@ -65,7 +65,7 @@ describe("resolveDID with verificationMethod", () => {
 
   test("Resolve DID with keyAgreement key", async () => {
     const vmId = `${initialDID}#${keyAgreementKey.publicKeyMultibase!.slice(-8)}`;
-    const { doc, meta } = await resolveDID(fullLog, { verificationMethod: vmId });
+    const { doc, meta } = await resolveDIDFromLog(fullLog, { verificationMethod: vmId });
     
     expect(doc.verificationMethod).toHaveLength(3);
     expect(doc.verificationMethod[2].publicKeyMultibase).toBe(keyAgreementKey.publicKeyMultibase);
@@ -74,12 +74,12 @@ describe("resolveDID with verificationMethod", () => {
 
   test("Resolve DID with non-existent verification method", async () => {
     const vmId = `${initialDID}#nonexistent`;
-    await expect(resolveDID(fullLog, { verificationMethod: vmId })).rejects.toThrow("DID with options");
+    await expect(resolveDIDFromLog(fullLog, { verificationMethod: vmId })).rejects.toThrow("DID with options");
   });
 
   test("Resolve DID with verification method and version time", async () => {
     const vmId = `${initialDID}#${authKey2.publicKeyMultibase!.slice(-8)}`;
-    const { doc, meta } = await resolveDID(fullLog, { 
+    const { doc, meta } = await resolveDIDFromLog(fullLog, { 
       verificationMethod: vmId, 
       versionTime: new Date('2023-02-15T00:00:00Z')
     });
@@ -94,7 +94,7 @@ describe("resolveDID with verificationMethod", () => {
     let error: Error | null = null;
     
     try {
-      await resolveDID(fullLog, { 
+      await resolveDIDFromLog(fullLog, { 
         verificationMethod: vmId, 
         versionNumber: 2 
       });

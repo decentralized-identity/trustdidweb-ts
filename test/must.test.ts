@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, test } from "bun:test";
-import { createDID, deactivateDID, resolveDID, updateDID } from "../src/method";
+import { createDID, deactivateDID, resolveDIDFromLog, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 
 
@@ -9,7 +9,7 @@ describe("did:tdw normative tests", async () => {
   let authKey1: VerificationMethod;
 
   beforeAll(async () => {
-    authKey1 = await generateEd25519VerificationMethod('authentication');
+    authKey1 = await generateEd25519VerificationMethod();
 
     const { doc, log } = await createDID({
       domain: 'example.com',
@@ -24,7 +24,7 @@ describe("did:tdw normative tests", async () => {
   });
 
   test("Resolve MUST process the DID Log correctly (positive)", async () => {
-    const resolved = await resolveDID(newLog1);
+    const resolved = await resolveDIDFromLog(newLog1);
     expect(resolved.meta.versionId.split('-')[0]).toBe("1");
   });
 
@@ -32,7 +32,7 @@ describe("did:tdw normative tests", async () => {
     let err;
     const malformedLog = "malformed log content";
     try {
-      await resolveDID(malformedLog as any);
+      await resolveDIDFromLog(malformedLog as any);
     } catch (e) {
       err = e;
     }
@@ -40,7 +40,7 @@ describe("did:tdw normative tests", async () => {
   });
 
   test("Update implementation MUST generate a correct DID Entry (positive)", async () => {
-    const authKey2 = await generateEd25519VerificationMethod('authentication');
+    const authKey2 = await generateEd25519VerificationMethod();
     const { doc: updatedDoc, log: updatedLog } = await updateDID({
       log: newLog1,
       signer: createSigner(authKey2),
@@ -50,8 +50,8 @@ describe("did:tdw normative tests", async () => {
       updated: new Date('2024-02-01T08:32:55Z')
     });
 
-    expect(updatedLog[1][0]).toBeDefined();
-    expect(updatedLog[1][0].split('-')[0]).toBe("2");
+    expect(updatedLog[1].versionId).toBeDefined();
+    expect(updatedLog[1].versionId.split('-')[0]).toBe("2");
   });
 
   test("Resolver encountering 'deactivated': true MUST return deactivated in metadata (positive)", async () => {
@@ -59,12 +59,12 @@ describe("did:tdw normative tests", async () => {
       log: newLog1,
       signer: createSigner(authKey1)
     });
-    const resolved = await resolveDID(updatedLog);
+    const resolved = await resolveDIDFromLog(updatedLog);
     expect(resolved.meta.deactivated).toBe(true);
   });
 
   test("Resolver encountering 'deactivated': false MUST return deactivated in metadata (negative)", async () => {
-    const resolved = await resolveDID(newLog1);
+    const resolved = await resolveDIDFromLog(newLog1);
     expect(resolved.meta.deactivated).toBeFalse();
   });
 });

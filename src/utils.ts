@@ -3,7 +3,7 @@ import * as base58btc from '@interop/base58-universal'
 import { canonicalize } from 'json-canonicalize';
 import { nanoid } from 'nanoid';
 import { sha256 } from 'multiformats/hashes/sha2'
-import { resolveDID } from './method';
+import { resolveDIDFromLog } from './method';
 import { join } from 'path';
 
 export const readLogFromDisk = (path: string): DIDLog => {
@@ -77,6 +77,23 @@ export const getFileUrl = (id: string) => {
   return `${baseUrl}/.well-known/did.jsonl`;
 }
 
+export async function fetchLogFromIdentifier(identifier: string): Promise<DIDLog> {
+  try {
+    const url = getFileUrl(identifier);
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const text = await response.text();
+    return text.trim().split('\n').map(line => JSON.parse(line));
+  } catch (error) {
+    console.error('Error fetching DID log:', error);
+    throw error;
+  }
+}
+
 export const createDate = (created?: Date | string) => new Date(created ?? Date.now()).toISOString().slice(0,-5)+'Z';
 
 export function bytesToHex(bytes: Uint8Array): string {
@@ -91,6 +108,11 @@ export const deriveHash = (input: any): string => {
   const data = canonicalize(input);
   const encoder = new TextEncoder();
   return base58btc.encode((sha256.digest(encoder.encode(data)) as any).bytes);
+}
+
+export const deriveNextKeyHash = (input: string): string => {
+  const encoder = new TextEncoder();
+  return base58btc.encode((sha256.digest(encoder.encode(input)) as any).bytes);
 }
 
 export const createDIDDoc = async (options: CreateDIDInterface): Promise<{doc: DIDDoc}> => {
@@ -119,27 +141,27 @@ export const normalizeVMs = (verificationMethod: VerificationMethod[] | undefine
   }
   const all: any = {};
   const authentication = verificationMethod
-    ?.filter(vm => vm.type === 'authentication').map(vm => createVMID(vm, did))
+    ?.filter(vm => vm.purpose === 'authentication').map(vm => createVMID(vm, did))
   if (authentication && authentication?.length > 0) {
     all.authentication = authentication;
   }
   const assertionMethod = verificationMethod
-    ?.filter(vm => vm.type === 'assertionMethod').map(vm => createVMID(vm, did))
+    ?.filter(vm => vm.purpose === 'assertionMethod').map(vm => createVMID(vm, did))
   if (assertionMethod && assertionMethod?.length > 0) {
     all.assertionMethod = assertionMethod;
   }
   const keyAgreement = verificationMethod
-    ?.filter(vm => vm.type === 'keyAgreement').map(vm => createVMID(vm, did));
+    ?.filter(vm => vm.purpose === 'keyAgreement').map(vm => createVMID(vm, did));
   if (keyAgreement && keyAgreement?.length > 0) {
     all.keyAgreement = keyAgreement;
   }
   const capabilityDelegation = verificationMethod
-    ?.filter(vm => vm.type === 'capabilityDelegation').map(vm => createVMID(vm, did));
+    ?.filter(vm => vm.purpose === 'capabilityDelegation').map(vm => createVMID(vm, did));
   if (capabilityDelegation && capabilityDelegation?.length > 0) {
     all.capabilityDelegation = capabilityDelegation;
   }
   const capabilityInvocation = verificationMethod
-  ?.filter(vm => vm.type === 'capabilityInvocation').map(vm => createVMID(vm, did));
+  ?.filter(vm => vm.purpose === 'capabilityInvocation').map(vm => createVMID(vm, did));
   if (capabilityInvocation && capabilityInvocation?.length > 0) {
     all.capabilityInvocation = capabilityInvocation;
   }
@@ -214,7 +236,7 @@ export const resolveVM = async (vm: string) => {
       const url = getFileUrl(vm.split('#')[0]);
       const didLog = await (await fetch(url)).text();
       const logEntries: DIDLog = didLog.trim().split('\n').map(l => JSON.parse(l));
-      const {doc} = await resolveDID(logEntries, {verificationMethod: vm});
+      const {doc} = await resolveDIDFromLog(logEntries, {verificationMethod: vm});
       return findVerificationMethod(doc, vm);
     }
     throw new Error(`Verification method ${vm} not found`);

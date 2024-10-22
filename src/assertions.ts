@@ -1,6 +1,6 @@
 import * as ed from '@noble/ed25519';
 import { base58btc } from "multiformats/bases/base58";
-import { bytesToHex, createSCID, deriveHash, resolveVM } from "./utils";
+import { bytesToHex, createSCID, deriveHash, deriveNextKeyHash, resolveVM } from "./utils";
 import { canonicalize } from 'json-canonicalize';
 import { createHash } from 'node:crypto';
 
@@ -24,11 +24,10 @@ const isWitnessAuthorized = (verificationMethod: string, witnesses: string[]): b
   return false;
 };
 
-export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: string[], witnesses: string[] = []) => {
+export const documentStateIsValid = async (doc: any, updateKeys: string[], witnesses: string[] = []) => {
   if (process.env.IGNORE_ASSERTION_DOCUMENT_STATE_IS_VALID) return true;
-
-  let i = 0;
-  while(i < proofs.length) {
+  const {proof: proofs, ...rest} = doc;
+  for (let i = 0; i < proofs.length; i++) {
     const proof = proofs[i];
 
     if (proof.verificationMethod.startsWith('did:key:')) {
@@ -47,33 +46,32 @@ export const documentStateIsValid = async (doc: any, proofs: any[], updateKeys: 
       throw new Error(`Unknown proof type ${proof.type}`);
     }
     if (proof.proofPurpose !== 'authentication') {
-      throw new Error(`Unknown proof purpose] ${proof.proofPurpose}`);
+      throw new Error(`Unknown proof purpose ${proof.proofPurpose}`);
     }
     if (proof.cryptosuite !== 'eddsa-jcs-2022') {
       throw new Error(`Unknown cryptosuite ${proof.cryptosuite}`);
     }
+
     const vm = await resolveVM(proof.verificationMethod);
     if (!vm) {
       throw new Error(`Verification Method ${proof.verificationMethod} not found`);
     }
+
     const publicKey = base58btc.decode(vm.publicKeyMultibase!);
-    if (publicKey[0] !== 237 || publicKey[1] !== 1) {
-      throw new Error(`multiKey doesn't include ed25519 header (0xed01)`)
+    if (publicKey[0] !== 0xed || publicKey[1] !== 0x01) {
+      throw new Error(`multiKey doesn't include ed25519 header (0xed01)`);
     }
+
     const {proofValue, ...restProof} = proof;
-    const sig = base58btc.decode(proofValue);
-    const dataHash = createHash('sha256').update(canonicalize(doc)).digest();
+    const signature = base58btc.decode(proofValue);
+    const dataHash = createHash('sha256').update(canonicalize(rest)).digest();
     const proofHash = createHash('sha256').update(canonicalize(restProof)).digest();
-    const input = Buffer.concat([dataHash, proofHash]);
-    const verified = await ed.verifyAsync(
-      bytesToHex(sig),
-      bytesToHex(input),
-      bytesToHex(publicKey.slice(2))
-    );
+    const input = Buffer.concat([proofHash, dataHash]);
+
+    const verified = await ed.verifyAsync(Buffer.from(signature).toString('hex'), Buffer.from(input).toString('hex'), Buffer.from(publicKey.slice(2)).toString('hex'));
     if (!verified) {
-      return false;
+      throw new Error(`Proof ${i} failed verification`);
     }
-    i++;
   }
   return true;
 }
@@ -90,7 +88,7 @@ export const newKeysAreValid = (updateKeys: string[], previousNextKeyHashes: str
   }
   if(previousPrerotation) {
     const inNextKeyHashes = updateKeys.reduce((result, key) => {
-      const hashedKey = deriveHash(key);
+      const hashedKey = deriveNextKeyHash(key);
       return result && previousNextKeyHashes.includes(hashedKey);
     }, true);
     if (!inNextKeyHashes) {

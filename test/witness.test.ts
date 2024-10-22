@@ -1,17 +1,33 @@
 import { beforeAll, describe, expect, test } from "bun:test";
-import { createDID, resolveDID, updateDID } from "../src/method";
+import { createDID, resolveDIDFromLog, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 
 let WITNESS_SCID = "";
 const WITNESS_SERVER_URL = "http://localhost:8000"; // Update this to match your witness server URL
 const WITNESS_DOMAIN = WITNESS_SERVER_URL.split('//')[1].replace(':', '%3A');
 
-const getWitnessDID = async () => {
+const getWitnessDIDLog = async () => {
   try {
     const response = await fetch(`${WITNESS_SERVER_URL}/.well-known/did.jsonl`);
-    return response.ok && (await response.json());
+    const logFile = await response.text();
+    
+    // Split the logFile by newlines and filter out any empty lines
+    const logEntries = logFile.split('\n').filter(line => line.trim() !== '');
+    
+    // Parse each non-empty line as JSON
+    const parsedLog = logEntries.map(line => {
+      try {
+        return JSON.parse(line);
+      } catch (error) {
+        console.error(`Error parsing log entry: ${line}`);
+        return null;
+      }
+    }).filter(entry => entry !== null);
+
+    return parsedLog;
   } catch (error) {
-    return false;
+    console.error('Error fetching or parsing witness DID log:', error);
+    return [];
   }
 }
 
@@ -41,9 +57,9 @@ const runWitnessTests = async () => {
     let initialDID: { did: string; doc: any; meta: any; log: DIDLog };
 
     beforeAll(async () => {
-      authKey = await generateEd25519VerificationMethod('authentication');
-      const didLog = await getWitnessDID();
-      const {did, meta} = await resolveDID([didLog] as DIDLog);
+      authKey = await generateEd25519VerificationMethod();
+      const didLog = await getWitnessDIDLog();
+      const {did, meta} = await resolveDIDFromLog(didLog as DIDLog);
       WITNESS_SCID = meta.scid;
       console.log(`Witness DID ${did} found`);
     });
@@ -58,16 +74,16 @@ const runWitnessTests = async () => {
         witnesses: [`did:tdw:${WITNESS_SCID}:${WITNESS_DOMAIN}`],
         witnessThreshold: 1
       });
-      const resolved = await resolveDID(initialDID.log);
+      const resolved = await resolveDIDFromLog(initialDID.log);
 
       expect(resolved.did).toBe(initialDID.did);
       expect(initialDID.meta.witnesses).toHaveLength(1);
       expect(initialDID.meta.witnessThreshold).toBe(1);
-      expect(initialDID.log[0][4]).toHaveLength(2); // Controller proof + witness proof
+      expect(initialDID.log[0].proof).toHaveLength(2); // Controller proof + witness proof
     });
 
     test("Update DID with witness", async () => {
-      const newAuthKey = await generateEd25519VerificationMethod('authentication');
+      const newAuthKey = await generateEd25519VerificationMethod();
       const updatedDID = await updateDID({
         log: initialDID.log,
         signer: createSigner(authKey),
@@ -77,7 +93,7 @@ const runWitnessTests = async () => {
 
       expect(updatedDID.meta.witnesses).toHaveLength(1);
       expect(updatedDID.meta.witnessThreshold).toBe(1);
-      expect(updatedDID.log[updatedDID.log.length - 1][4]).toHaveLength(2); // Controller proof + witness proof
+      expect(updatedDID.log[updatedDID.log.length - 1].proof).toHaveLength(2); // Controller proof + witness proof
     });
 
     test("Witness signing with environment variable key", async () => {

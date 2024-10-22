@@ -1,52 +1,51 @@
 import * as ed from '@noble/ed25519';
 import { edwardsToMontgomeryPub, edwardsToMontgomeryPriv } from '@noble/curves/ed25519';
 
-import { bytesToHex, createDate } from "./utils";
+import { createDate } from "./utils";
 import { base58btc } from "multiformats/bases/base58"
 import { canonicalize } from 'json-canonicalize';
 import { createHash } from 'node:crypto';
 
 export const createSigner = (vm: VerificationMethod, useStatic: boolean = true) => {
-  return async (doc: any, challenge: string) => {
+  return async (doc: any) => {
     try {
       const proof: any = {
         type: 'DataIntegrityProof',
         cryptosuite: 'eddsa-jcs-2022',
-        verificationMethod: useStatic ? `did:key:${vm.publicKeyMultibase}` : vm.id,
+        verificationMethod: useStatic ? `did:key:${vm.publicKeyMultibase}#${vm.publicKeyMultibase}` : vm.id,
         created: createDate(),
-        proofPurpose: 'authentication',
-        challenge
+        proofPurpose: 'authentication'       
       }
       const dataHash = createHash('sha256').update(canonicalize(doc)).digest();
       const proofHash = createHash('sha256').update(canonicalize(proof)).digest();
-      const input = Buffer.concat([dataHash, proofHash]);
-      const secretKey = base58btc.decode(vm.secretKeyMultibase!);
+      const input = Buffer.concat([proofHash, dataHash]);
+      const secretKey = base58btc.decode(vm.secretKeyMultibase!).slice(2);
+      const signature = await ed.signAsync(Buffer.from(input).toString('hex'), Buffer.from(secretKey).toString('hex'));
 
-      const output = await ed.signAsync(bytesToHex(input), bytesToHex(secretKey.slice(2, 34)));
-
-      proof.proofValue = base58btc.encode(output);
+      proof.proofValue = base58btc.encode(signature);
       return {...doc, proof};
     } catch (e: any) {
       console.error(e)
-      throw new Error(`Document signing failure: ${e.details}`)
+      throw new Error(`Document signing failure: ${e.message || e}`)
     }
   }
 }
 
-export const generateEd25519VerificationMethod = async (purpose: 'authentication' | 'assertionMethod' | 'capabilityInvocation' | 'capabilityDelegation'): Promise<VerificationMethod> => {
+export const generateEd25519VerificationMethod = async (): Promise<VerificationMethod> => {
   const privKey = ed.utils.randomPrivateKey();
   const pubKey = await ed.getPublicKeyAsync(privKey);
   const publicKeyMultibase = base58btc.encode(Buffer.concat([new Uint8Array([0xed, 0x01]), pubKey]));
   const secretKeyMultibase = base58btc.encode(Buffer.concat([new Uint8Array([0x80, 0x26]), privKey]));
 
   return {
-    type: purpose,
+    type: "Multikey",
     publicKeyMultibase,
-    secretKeyMultibase
+    secretKeyMultibase,
+    purpose: 'authentication'
   };
 }
 
-export const generateX25519VerificationMethod = async (purpose: 'keyAgreement'): Promise<VerificationMethod> => {
+export const generateX25519VerificationMethod = async (): Promise<VerificationMethod> => {
   const privKey = ed.utils.randomPrivateKey();
   const pubKey = await ed.getPublicKeyAsync(privKey);
   const x25519PubKey = edwardsToMontgomeryPub(pubKey);
@@ -55,8 +54,9 @@ export const generateX25519VerificationMethod = async (purpose: 'keyAgreement'):
   const secretKeyMultibase = base58btc.encode(Buffer.concat([new Uint8Array([0x82, 0x26]), x25519PrivKey]));
 
   return {
-    type: purpose,
+    type: "Multikey",
     publicKeyMultibase,
-    secretKeyMultibase
+    secretKeyMultibase,
+    purpose: 'keyAgreement'
   }
 }
