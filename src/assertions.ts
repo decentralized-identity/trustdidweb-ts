@@ -45,7 +45,7 @@ export const documentStateIsValid = async (doc: any, updateKeys: string[], witne
     if (proof.type !== 'DataIntegrityProof') {
       throw new Error(`Unknown proof type ${proof.type}`);
     }
-    if (proof.proofPurpose !== 'authentication') {
+    if (proof.proofPurpose !== 'authentication' && proof.proofPurpose !== 'assertionMethod') {
       throw new Error(`Unknown proof purpose ${proof.proofPurpose}`);
     }
     if (proof.cryptosuite !== 'eddsa-jcs-2022') {
