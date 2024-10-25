@@ -230,7 +230,7 @@ test("Update DID (add external controller)", async () => {
     didLog = [...updatedLog];
     expect(updatedDID).toBe(did);
     expect(updatedDoc.controller).toContain(externalAuthKey.controller);
-    expect(updatedDoc.authentication[1]).toContain(externalAuthKey.controller!.slice(-6));
+    expect(updatedDoc.assertionMethod[1]).toContain(externalAuthKey.controller!.slice(-6));
     expect(updatedDoc.verificationMethod[1].controller).toBe(externalAuthKey.controller);
 
     expect(meta.versionId.split('-')[0]).toBe("5");

@@ -14,7 +14,7 @@ export const createSigner = (vm: VerificationMethod, useStatic: boolean = true) 
         cryptosuite: 'eddsa-jcs-2022',
         verificationMethod: useStatic ? `did:key:${vm.publicKeyMultibase}#${vm.publicKeyMultibase}` : vm.id,
         created: createDate(),
-        proofPurpose: 'authentication'       
+        proofPurpose: 'assertionMethod'       
       }
       const dataHash = createHash('sha256').update(canonicalize(doc)).digest();
       const proofHash = createHash('sha256').update(canonicalize(proof)).digest();
@@ -41,7 +41,7 @@ export const generateEd25519VerificationMethod = async (): Promise<VerificationM
     type: "Multikey",
     publicKeyMultibase,
     secretKeyMultibase,
-    purpose: 'authentication'
+    purpose: 'assertionMethod'
   };
 }
 
