@@ -26,5 +26,8 @@
     "json-canonicalize": "^1.0.6",
     "multiformats": "^13.1.0",
     "nanoid": "^5.0.6"
+  },
+  "bin": {
+    "tdw": "./bin/tdw"
   }
 }
