@@ -77,7 +77,6 @@ beforeAll(async () => {
 });
 
 test("Resolve DID at time (first)", async () => {
-  console.error('log', log)
   const resolved = await resolveDIDFromLog(log, {versionTime: new Date('2021-01-15T08:32:55Z')});
   expect(resolved.meta.versionId.split('-')[0]).toBe('1');
 });

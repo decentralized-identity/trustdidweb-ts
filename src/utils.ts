@@ -7,13 +7,25 @@ import { resolveDIDFromLog } from './method';
 import { join } from 'path';
 
 export const readLogFromDisk = (path: string): DIDLog => {
-  return fs.readFileSync(path, 'utf8').trim().split('\n').map(l => JSON.parse(l));
+  return readLogFromString(fs.readFileSync(path, 'utf8'));
+}
+
+export const readLogFromString = (str: string): DIDLog => {
+  return str.trim().split('\n').map(l => JSON.parse(l));
 }
 
 export const writeLogToDisk = (path: string, log: DIDLog) => {
-  fs.writeFileSync(path, JSON.stringify(log.shift()) + '\n');
-  for (const entry of log) {
-    fs.appendFileSync(path, JSON.stringify(entry) + '\n');
+  try {
+    // Write first entry
+    fs.writeFileSync(path, JSON.stringify(log[0]) + '\n');
+    
+    // Append remaining entries
+    for (let i = 1; i < log.length; i++) {
+      fs.appendFileSync(path, JSON.stringify(log[i]) + '\n');
+    }
+  } catch (error) {
+    console.error('Error writing log to disk:', error);
+    throw error;
   }
 }
 
@@ -179,10 +191,6 @@ export const normalizeVMs = (verificationMethod: VerificationMethod[] | undefine
 export const collectWitnessProofs = async (witnesses: string[], log: DIDLog): Promise<DataIntegrityProof[]> => {
   const proofs: DataIntegrityProof[] = [];
 
-  const timeout = (ms: number) => new Promise((_, reject) => 
-    setTimeout(() => reject(new Error('Request timed out')), ms)
-  );
-
   const collectProof = async (witness: string): Promise<void> => {
     const parts = witness.split(':');
     if (parts.length < 4) {
@@ -191,38 +199,37 @@ export const collectWitnessProofs = async (witnesses: string[], log: DIDLog): Pr
     
     const witnessUrl = getBaseUrl(witness) + '/witness';
     try {
-      const response: any = await Promise.race([
-        fetch(witnessUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ log }),
-        }),
-        timeout(10000) // 10 second timeout
-      ]);
+      const response = await fetch(witnessUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ log }),
+      });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.proof) {
-          proofs.push(data.proof);
-        } else {
-          console.warn(`Witness ${witnessUrl} did not provide a valid proof`);
-        }
-      } else {
+      if (!response.ok) {
         console.warn(`Witness ${witnessUrl} responded with status: ${response.status}`);
+        return;
+      }
+
+      const data = await response.json() as any;
+      if (data.proof) {
+        proofs.push(data.proof);
+      } else if (data.data?.proof) {
+        proofs.push(data.data.proof);
+      } else {
+        console.warn(`Witness ${witnessUrl} did not provide a valid proof`);
       }
     } catch (error: any) {
-      if (error.message === 'Request timed out') {
-        console.error(`Request to witness ${witnessUrl} timed out`);
-      } else {
-        console.error(`Error collecting proof from witness ${witnessUrl}:`, error);
-      }
+      console.error(`Error collecting proof from witness ${witnessUrl}:`, error.message);
     }
   };
 
-  // Collect proofs from all witnesses concurrently
   await Promise.all(witnesses.map(collectProof));
+  
+  if (proofs.length === 0) {
+    console.warn('No witness proofs were collected');
+  }
 
   return proofs;
 };
