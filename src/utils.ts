@@ -41,24 +41,47 @@ export const writeVerificationMethodToEnv = (verificationMethod: VerificationMet
   };
 
   try {
+    // Read existing .env content
+    let envContent = '';
     let existingData: any[] = [];
+    
     if (fs.existsSync(envFilePath)) {
-      const envContent = fs.readFileSync(envFilePath, 'utf8');
+      envContent = fs.readFileSync(envFilePath, 'utf8');
       const match = envContent.match(/DID_VERIFICATION_METHODS=(.*)/);
       if (match && match[1]) {
         const decodedData = Buffer.from(match[1], 'base64').toString('utf8');
         existingData = JSON.parse(decodedData);
+        
+        // Check if verification method with same ID already exists
+        const existingIndex = existingData.findIndex(vm => vm.id === vmData.id);
+        if (existingIndex !== -1) {
+          // Update existing verification method
+          existingData[existingIndex] = vmData;
+        } else {
+          // Add new verification method
+          existingData.push(vmData);
+        }
+      } else {
+        // No existing verification methods, create new array
+        existingData = [vmData];
       }
+    } else {
+      // No .env file exists, create new array
+      existingData = [vmData];
     }
-
-    existingData.push(vmData);
     
     const jsonData = JSON.stringify(existingData);
     const encodedData = Buffer.from(jsonData).toString('base64');
     
-    const envContent = `DID_VERIFICATION_METHODS=${encodedData}\n`;
+    // If DID_VERIFICATION_METHODS already exists, replace it
+    if (envContent.includes('DID_VERIFICATION_METHODS=')) {
+      envContent = envContent.replace(/DID_VERIFICATION_METHODS=.*\n?/, `DID_VERIFICATION_METHODS=${encodedData}\n`);
+    } else {
+      // Otherwise append it
+      envContent += `DID_VERIFICATION_METHODS=${encodedData}\n`;
+    }
 
-    fs.writeFileSync(envFilePath, envContent);
+    fs.writeFileSync(envFilePath, envContent.trim() + '\n');
     console.log('Verification method written to .env file successfully.');
   } catch (error) {
     console.error('Error writing verification method to .env file:', error);

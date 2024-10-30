@@ -2,7 +2,7 @@
   "name": "trustdidweb-ts",
   "module": "src/index.ts",
   "type": "module",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "scripts": {
     "dev": "bun --watch --inspect-wait ./src/resolver.ts",
     "server": "bun --watch ./src/resolver.ts",
