@@ -97,8 +97,8 @@ export async function handleCreate(args: string[]) {
 
       // Write DID document for reference
       const docPath = output.replace('.jsonl', '.json');
-      fs.writeFileSync(docPath, JSON.stringify(doc, null, 2));
-      console.log(`DID document written to ${docPath}`);
+      fs.writeFileSync(docPath, JSON.stringify(doc, null, 2).replace(/did:tdw:([^:]+)/g, 'did:web'));
+      console.log(`DID WEB document written to ${docPath}`);
     } else {
       // If no output specified, print to console
       console.log('DID Document:', JSON.stringify(doc, null, 2));
@@ -233,6 +233,11 @@ export async function handleUpdate(args: string[]) {
     if (output) {
       writeLogToDisk(output, result.log);
       console.log(`Updated DID log written to ${output}`);
+
+      // Write DID document for reference
+      const docPath = output.replace('.jsonl', '.json');
+      fs.writeFileSync(docPath, JSON.stringify(result.doc, null, 2).replace(/did:tdw:([^:]+)/g, 'did:web'));
+      console.log(`DID WEB document written to ${docPath}`);
     }
 
     return result;
@@ -335,8 +340,8 @@ function parseServices(services: string[]): ServiceEndpoint[] {
   });
 }
 
-// Update the main function to use the handlers
-async function main() {
+// Update the main function to be exported
+export async function main() {
   const [command, ...args] = process.argv.slice(2);
   console.log('Command:', command);
   console.log('Args:', args);
@@ -370,13 +375,10 @@ async function main() {
   }
 }
 
-// Move the main function to the bottom and only run it if this file is being executed directly
+// Only run main if this file is being executed directly
 if (process.argv[1] === import.meta.path) {
   main().catch(error => {
     console.error('Fatal error:', error);
     process.exit(1);
   });
 }
-
-// Export main for testing if needed
-export { main };
