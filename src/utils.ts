@@ -7,13 +7,25 @@ import { resolveDIDFromLog } from './method';
 import { join } from 'path';
 
 export const readLogFromDisk = (path: string): DIDLog => {
-  return fs.readFileSync(path, 'utf8').trim().split('\n').map(l => JSON.parse(l));
+  return readLogFromString(fs.readFileSync(path, 'utf8'));
+}
+
+export const readLogFromString = (str: string): DIDLog => {
+  return str.trim().split('\n').map(l => JSON.parse(l));
 }
 
 export const writeLogToDisk = (path: string, log: DIDLog) => {
-  fs.writeFileSync(path, JSON.stringify(log.shift()) + '\n');
-  for (const entry of log) {
-    fs.appendFileSync(path, JSON.stringify(entry) + '\n');
+  try {
+    // Write first entry
+    fs.writeFileSync(path, JSON.stringify(log[0]) + '\n');
+    
+    // Append remaining entries
+    for (let i = 1; i < log.length; i++) {
+      fs.appendFileSync(path, JSON.stringify(log[i]) + '\n');
+    }
+  } catch (error) {
+    console.error('Error writing log to disk:', error);
+    throw error;
   }
 }
 
@@ -29,24 +41,47 @@ export const writeVerificationMethodToEnv = (verificationMethod: VerificationMet
   };
 
   try {
+    // Read existing .env content
+    let envContent = '';
     let existingData: any[] = [];
+    
     if (fs.existsSync(envFilePath)) {
-      const envContent = fs.readFileSync(envFilePath, 'utf8');
+      envContent = fs.readFileSync(envFilePath, 'utf8');
       const match = envContent.match(/DID_VERIFICATION_METHODS=(.*)/);
       if (match && match[1]) {
         const decodedData = Buffer.from(match[1], 'base64').toString('utf8');
         existingData = JSON.parse(decodedData);
+        
+        // Check if verification method with same ID already exists
+        const existingIndex = existingData.findIndex(vm => vm.id === vmData.id);
+        if (existingIndex !== -1) {
+          // Update existing verification method
+          existingData[existingIndex] = vmData;
+        } else {
+          // Add new verification method
+          existingData.push(vmData);
+        }
+      } else {
+        // No existing verification methods, create new array
+        existingData = [vmData];
       }
+    } else {
+      // No .env file exists, create new array
+      existingData = [vmData];
     }
-
-    existingData.push(vmData);
     
     const jsonData = JSON.stringify(existingData);
     const encodedData = Buffer.from(jsonData).toString('base64');
     
-    const envContent = `DID_VERIFICATION_METHODS=${encodedData}\n`;
+    // If DID_VERIFICATION_METHODS already exists, replace it
+    if (envContent.includes('DID_VERIFICATION_METHODS=')) {
+      envContent = envContent.replace(/DID_VERIFICATION_METHODS=.*\n?/, `DID_VERIFICATION_METHODS=${encodedData}\n`);
+    } else {
+      // Otherwise append it
+      envContent += `DID_VERIFICATION_METHODS=${encodedData}\n`;
+    }
 
-    fs.writeFileSync(envFilePath, envContent);
+    fs.writeFileSync(envFilePath, envContent.trim() + '\n');
     console.log('Verification method written to .env file successfully.');
   } catch (error) {
     console.error('Error writing verification method to .env file:', error);
@@ -179,10 +214,6 @@ export const normalizeVMs = (verificationMethod: VerificationMethod[] | undefine
 export const collectWitnessProofs = async (witnesses: string[], log: DIDLog): Promise<DataIntegrityProof[]> => {
   const proofs: DataIntegrityProof[] = [];
 
-  const timeout = (ms: number) => new Promise((_, reject) => 
-    setTimeout(() => reject(new Error('Request timed out')), ms)
-  );
-
   const collectProof = async (witness: string): Promise<void> => {
     const parts = witness.split(':');
     if (parts.length < 4) {
@@ -191,38 +222,37 @@ export const collectWitnessProofs = async (witnesses: string[], log: DIDLog): Pr
     
     const witnessUrl = getBaseUrl(witness) + '/witness';
     try {
-      const response: any = await Promise.race([
-        fetch(witnessUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ log }),
-        }),
-        timeout(10000) // 10 second timeout
-      ]);
+      const response = await fetch(witnessUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ log }),
+      });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.proof) {
-          proofs.push(data.proof);
-        } else {
-          console.warn(`Witness ${witnessUrl} did not provide a valid proof`);
-        }
-      } else {
+      if (!response.ok) {
         console.warn(`Witness ${witnessUrl} responded with status: ${response.status}`);
+        return;
+      }
+
+      const data = await response.json() as any;
+      if (data.proof) {
+        proofs.push(data.proof);
+      } else if (data.data?.proof) {
+        proofs.push(data.data.proof);
+      } else {
+        console.warn(`Witness ${witnessUrl} did not provide a valid proof`);
       }
     } catch (error: any) {
-      if (error.message === 'Request timed out') {
-        console.error(`Request to witness ${witnessUrl} timed out`);
-      } else {
-        console.error(`Error collecting proof from witness ${witnessUrl}:`, error);
-      }
+      console.error(`Error collecting proof from witness ${witnessUrl}:`, error.message);
     }
   };
 
-  // Collect proofs from all witnesses concurrently
   await Promise.all(witnesses.map(collectProof));
+  
+  if (proofs.length === 0) {
+    console.warn('No witness proofs were collected');
+  }
 
   return proofs;
 };

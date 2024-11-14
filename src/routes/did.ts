@@ -1,12 +1,13 @@
-import { resolveDID } from '../method';
+import { resolveDIDFromLog } from '../method';
 import { getFileUrl } from '../utils';
 
 export const getLatestDIDDoc = async ({params: {id}}: {params: {id: string;};}) => {
   try {
+    console.log(`Resolving DID ${id}`);
     const url = getFileUrl(id);
     const didLog = await (await fetch(url)).text();
     const logEntries: DIDLog = didLog.trim().split('\n').map(l => JSON.parse(l));
-    const {did, doc, meta} = await resolveDID(logEntries);
+    const {did, doc, meta} = await resolveDIDFromLog(logEntries);
     return {doc, meta};
   } catch (e) {
     console.error(e)

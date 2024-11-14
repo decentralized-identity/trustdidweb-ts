@@ -1,0 +1,19 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1",
+    "https://w3id.org/security/multikey/v1"
+  ],
+  "id": "did:web:example.com",
+  "controller": "did:web:example.com",
+  "assertionMethod": [
+    "did:web:example.com#kXMjmXxS"
+  ],
+  "verificationMethod": [
+    {
+      "id": "did:web:example.com#kXMjmXxS",
+      "controller": "did:web:example.com",
+      "type": "Multikey",
+      "publicKeyMultibase": "z6MkkpR5RBSDQ6UQbBua6McJ9XTysJgbC3HfSNGRkXMjmXxS"
+    }
+  ]
+}

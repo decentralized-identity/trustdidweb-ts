@@ -54,11 +54,11 @@ The following commands are defined in the `package.json` file:
    ```
    This command runs: `bun test`
 
-4. `test:watch`: Run tests in watch mode, focusing on witness tests.
+4. `test:watch`: Run tests in watch mode.
    ```bash
    bun run test:watch
    ```
-   This command runs: `bun test --watch witness`
+   This command runs: `bun test --watch`
 
 5. `test:bail`: Run tests in watch mode, stopping on the first failure with verbose output.
    ```bash
@@ -78,102 +78,81 @@ The following commands are defined in the `package.json` file:
    ```
    This command runs: `bun run src/cli.ts --`
 
-## CLI Documentation
+## CLI Usage Guide
 
-```
-The CLI is Experimental, buggy and beta software -- use at your own risk!
-```
+> ⚠️ **Warning**: The CLI is experimental beta software - use at your own risk!
 
-The trustdidweb-ts package provides a Command Line Interface (CLI) for managing Decentralized Identifiers (DIDs) using the `did:tdw` method.
-
-
-### Usage
-
-The general syntax for using the CLI is:
-
+### Basic Syntax
 ```bash
 bun run cli [command] [options]
 ```
 
-To output the help using the CLI:
+### Available Commands
+
+#### 1. Create a DID
+Create a new DID with various configuration options:
 
 ```bash
-bun run cli help
+bun run cli create \
+  --domain example.com \
+  --output ./did.jsonl \
+  --portable \
+  --witness did:tdw:witness1:example.com \
+  --witness-threshold 1
 ```
 
-### Commands
+**Key Options:**
+- `--domain`: (Required) Host domain for the DID
+- `--output`: Save location for DID log
+- `--portable`: Enable domain portability
+- `--prerotation`: Enable key pre-rotation security
+- `--witness`: Add witness DIDs (repeatable)
+- `--witness-threshold`: Set minimum witness count
+- `--next-key-hash`: Add pre-rotation key hashes (required with --prerotation)
 
-1. **Create a DID**
+#### 2. Resolve a DID
+View the current state of a DID:
 
-   ```bash
-   bun run cli create [options]
-   ```
+```bash
+# From DID identifier
+bun run cli resolve --did did:tdw:123456:example.com
 
-   Options:
-   - `--domain [domain]`: (Required) Domain for the DID
-   - `--output [file]`: (Optional) Path to save the DID log
-   - `--portable`: (Optional) Make the DID portable
-   - `--prerotation`: (Optional) Enable pre-rotation
-   - `--witness [witness]`: (Optional) Add a witness (can be used multiple times)
-   - `--witness-threshold [n]`: (Optional) Set witness threshold
+# From local log file
+bun run cli resolve --log ./did.jsonl
+```
 
-   Example:
-   ```bash
-   bun run cli create --domain example.com --portable --witness did:tdw:QmWitness1:example.com --witness did:tdw:QmWitness2...:example.com
-   ```
+#### 3. Update a DID
+Modify an existing DID's properties:
 
-2. **Resolve a DID**
+```bash
+bun run cli update \
+  --log ./did.jsonl \
+  --output ./updated.jsonl \
+  --add-vm keyAgreement \
+  --service LinkedDomains,https://example.com \
+  --also-known-as did:web:example.com
+```
 
-   ```bash
-   bun run cli resolve --did [did]
-   ```
+**Update Options:**
+- `--log`: (Required) Current DID log path
+- `--output`: Updated log save location
+- `--add-vm`: Add verification methods:
+  - authentication
+  - assertionMethod
+  - keyAgreement
+  - capabilityInvocation
+  - capabilityDelegation
+- `--service`: Add services (format: type,endpoint)
+- `--also-known-as`: Add alternative identifiers
+- `--prerotation`: Enable/update key pre-rotation
+- `--witness`: Update witness list
+- `--witness-threshold`: Update witness requirements
 
-   Example:
-   ```bash
-   bun run cli resolve --did did:tdw:Qm...:example.com
-   ```
+#### 4. Deactivate a DID
+Permanently deactivate a DID:
 
-3. **Update a DID**
-
-   ```bash
-   bun run cli update [options]
-   ```
-
-   Options:
-   - `--log [file]`: (Required) Path to the DID log file
-   - `--output [file]`: (Optional) Path to save the updated DID log
-   - `--prerotation`: (Optional) Enable pre-rotation
-   - `--witness [witness]`: (Optional) Add a witness (can be used multiple times)
-   - `--witness-threshold [n]`: (Optional) Set witness threshold
-   - `--service [service]`: (Optional) Add a service (format: type,endpoint)
-   - `--add-vm [type]`: (Optional) Add a verification method
-   - `--also-known-as [alias]`: (Optional) Add an alsoKnownAs alias
-
-   Example:
-   ```bash
-   bun run cli update --log ./did.jsonl --output ./updated-did.jsonl --add-vm keyAgreement --service LinkedDomains,https://example.com
-   ```
-
-4. **Deactivate a DID**
-
-   ```bash
-   bun run cli deactivate [options]
-   ```
-
-   Options:
-   - `--log [file]`: (Required) Path to the DID log file
-   - `--output [file]`: (Optional) Path to save the deactivated DID log
-
-   Example:
-   ```bash
-   bun run cli deactivate --log ./did.jsonl --output ./deactivated-did.jsonl
-   ```
-
-### Additional Notes
-
-- The CLI automatically generates new authentication keys when creating or updating a DID.
-- The `--portable` option in the create command allows the DID to be moved to a different domain later.
-- The `--prerotation` option enables key pre-rotation, which helps prevent loss of control if an active private key is compromised.
-- Witness functionality allows for third-party attestation of DID operations.
-- The CLI saves the DID log to a file when the `--output` option is provided.
-- For the update and deactivate commands, the existing DID log must be provided using the `--log` option.
+```bash
+bun run cli deactivate \
+  --log ./did.jsonl \
+  --output ./deactivated.jsonl
+```
