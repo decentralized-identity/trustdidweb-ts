@@ -1,14 +1,15 @@
 import { clone, collectWitnessProofs, createDate, createDIDDoc, createSCID, deriveHash, fetchLogFromIdentifier, findVerificationMethod, normalizeVMs } from "./utils";
 import { BASE_CONTEXT, METHOD, PLACEHOLDER, PROTOCOL } from './constants';
-import { documentStateIsValid, hashChainValid, newKeysAreValid, scidIsFromHash } from './assertions';
+import { documentStateIsValid, hashChainValid, newKeysAreInNextKeys, scidIsFromHash } from './assertions';
 
 
 export const createDID = async (options: CreateDIDInterface): Promise<{did: string, doc: any, meta: DIDResolutionMeta, log: DIDLog}> => {
   if (!options.updateKeys) {
     throw new Error('Update keys not supplied')
   }
-  debugger;
-  newKeysAreValid(options.updateKeys, [], options.nextKeyHashes ?? [], false, options.prerotation === true); 
+  if (options.prerotation && !options.nextKeyHashes) {
+    throw new Error('nextKeyHashes are required if prerotation enabled');
+  }
   const controller = `did:${METHOD}:${PLACEHOLDER}:${options.domain}`;
   const createdDate = createDate(options.created);
   let {doc} = await createDIDDoc({...options, controller});
@@ -35,11 +36,11 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
     },
     state: doc
   };
-  const initialLogEntryHash = deriveHash(initialLogEntry);
+  const initialLogEntryHash = await deriveHash(initialLogEntry);
   params.scid = await createSCID(initialLogEntryHash);
   initialLogEntry.state = doc;
   const prelimEntry = JSON.parse(JSON.stringify(initialLogEntry).replaceAll(PLACEHOLDER, params.scid));
-  const logEntryHash2 = deriveHash(prelimEntry);
+  const logEntryHash2 = await deriveHash(prelimEntry);
   prelimEntry.versionId = `1-${logEntryHash2}`;
   const signedDoc = await options.signer(prelimEntry);
   let allProofs = [signedDoc.proof];
@@ -109,7 +110,6 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
   };
   let host = '';
   let i = 0;
-  let nextKeyHashes: string[] = [];
 
   for (const entry of resolutionLog) {
     const { versionId, versionTime, parameters, state, proof } = entry;
@@ -135,20 +135,19 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
       meta.witnesses = parameters.witnesses || meta.witnesses;
       meta.witnessThreshold = parameters.witnessThreshold || meta.witnessThreshold || meta.witnesses.length;
       meta.nextKeyHashes = parameters.nextKeyHashes ?? [];
-      newKeysAreValid(meta.updateKeys, [], meta.nextKeyHashes, false, meta.prerotation === true);
       const logEntry = {
         versionId: PLACEHOLDER,
         versionTime: meta.created,
         parameters: JSON.parse(JSON.stringify(parameters).replaceAll(meta.scid, PLACEHOLDER)),
         state: JSON.parse(JSON.stringify(newDoc).replaceAll(meta.scid, PLACEHOLDER))
       };
-      const logEntryHash = deriveHash(logEntry);
+      const logEntryHash = await deriveHash(logEntry);
       meta.previousLogEntryHash = logEntryHash;
       if (!await scidIsFromHash(meta.scid, logEntryHash)) {
         throw new Error(`SCID '${meta.scid}' not derived from logEntryHash '${logEntryHash}'`);
       }
       const prelimEntry = JSON.parse(JSON.stringify(logEntry).replaceAll(PLACEHOLDER, meta.scid));
-      const logEntryHash2 = deriveHash(prelimEntry);
+      const logEntryHash2 = await deriveHash(prelimEntry);
       const verified = await documentStateIsValid({...prelimEntry, versionId: `1-${logEntryHash2}`, proof}, meta.updateKeys, meta.witnesses);
       if (!verified) {
         throw new Error(`version ${meta.versionId} failed verification of the proof.`)
@@ -164,14 +163,19 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
       } else if (newHost !== host) {
         host = newHost;
       }
-      newKeysAreValid(parameters.updateKeys ?? [], nextKeyHashes, parameters.nextKeyHashes ?? [], meta.prerotation, parameters.prerotation === true);
-      if (!hashChainValid(`${i+1}-${entryHash}`, entry.versionId)) {
-        throw new Error(`Hash chain broken at '${meta.versionId}'`);
-      }
+
+      // First validate with current keys
       const verified = await documentStateIsValid(entry, meta.updateKeys, meta.witnesses);
       if (!verified) {
         throw new Error(`version ${meta.versionId} failed verification of the proof.`)
       }
+
+      // Then validate hash chain
+      if (!hashChainValid(`${i+1}-${entryHash}`, entry.versionId)) {
+        throw new Error(`Hash chain broken at '${meta.versionId}'`);
+      }
+
+      // After validation, update meta state
       if (parameters.updateKeys) {
         meta.updateKeys = parameters.updateKeys;
       }
@@ -180,14 +184,23 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
       }
       if (parameters.prerotation === true) {
         meta.prerotation = true;
+        meta.nextKeyHashes = parameters.nextKeyHashes || [];
       }
       if (parameters.nextKeyHashes) {
-        nextKeyHashes = parameters.nextKeyHashes;
+        meta.nextKeyHashes = parameters.nextKeyHashes;
       }
       if (parameters.witnesses) {
         meta.witnesses = parameters.witnesses;
         meta.witnessThreshold = parameters.witnessThreshold || parameters.witnesses.length;
       }
+
+      // Finally validate key rotation
+      await newKeysAreInNextKeys(
+        parameters.updateKeys ?? [], 
+        meta.nextKeyHashes ?? [], 
+        meta.prerotation, 
+        parameters.prerotation === true
+      );
     }
     doc = clone(newDoc);
     did = doc.id;
@@ -221,7 +234,8 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
     controller, domain, nextKeyHashes, prerotation, witnesses, witnessThreshold
   } = options;
   let {did, doc, meta} = await resolveDIDFromLog(log);
-  newKeysAreValid(updateKeys ?? [], meta.nextKeyHashes ?? [], nextKeyHashes ?? [], meta.prerotation === true, prerotation === true);
+  
+  await newKeysAreInNextKeys(updateKeys ?? [], nextKeyHashes ?? [], meta.prerotation, prerotation ?? false);
 
   if (domain) {
     if (!meta.portable) {
@@ -240,7 +254,10 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
   }
   const params = {
     ...(updateKeys ? {updateKeys} : {}),
-    ...(prerotation ? {prerotation: true, nextKeyHashes} : {}),
+    ...(prerotation ? {
+      prerotation: true,
+      nextKeyHashes: nextKeyHashes || []
+    } : {}),
     ...(witnesses || meta.witnesses ? {
       witnesses: witnesses || meta.witnesses,
       witnessThreshold: witnesses ? witnessThreshold || witnesses.length : meta.witnessThreshold
@@ -255,7 +272,7 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
     parameters: params,
     state: clone(newDoc)
   };
-  const logEntryHash = deriveHash(logEntry);
+  const logEntryHash = await deriveHash(logEntry);
   logEntry.versionId = `${nextVersion}-${logEntryHash}`;
   const signedDoc = await options.signer(logEntry);
   logEntry.proof = [signedDoc.proof];
@@ -267,6 +284,7 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
     previousLogEntryHash: meta.previousLogEntryHash,
     ...params
   };
+
   if (newMeta.witnesses && newMeta.witnesses.length > 0) {
     const witnessProofs = await collectWitnessProofs(newMeta.witnesses, [...log, logEntry] as DIDLog);
     if (witnessProofs.length > 0) {
@@ -305,7 +323,7 @@ export const deactivateDID = async (options: DeactivateDIDInterface): Promise<{d
     parameters: {deactivated: true},
     state: clone(newDoc)
   };
-  const logEntryHash = deriveHash(logEntry);
+  const logEntryHash = await deriveHash(logEntry);
   logEntry.versionId = `${nextVersion}-${logEntryHash}`;
   const signedDoc = await options.signer(logEntry);
   logEntry.proof = [signedDoc.proof];

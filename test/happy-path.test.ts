@@ -1,7 +1,7 @@
 import { test, expect, beforeAll } from "bun:test";
 import { createDID, deactivateDID, resolveDIDFromLog, updateDID } from "../src/method";
 import fs from 'node:fs';
-import { readLogFromDisk } from "../src/utils";
+import { deriveNextKeyHash, readLogFromDisk } from "../src/utils";
 import { createVMID, deriveHash } from "../src/utils";
 import { METHOD } from "../src/constants";
 import { createSigner, generateEd25519VerificationMethod, generateX25519VerificationMethod } from "../src/cryptography";
@@ -249,7 +249,7 @@ test("Update DID (enable prerotation)", async () => {
 
   const nextAuthKey = await generateEd25519VerificationMethod();
   const nextNextAuthKey = await generateEd25519VerificationMethod();
-  const nextNextKeyHash = deriveHash(nextNextAuthKey.publicKeyMultibase);
+  const nextNextKeyHash = await deriveNextKeyHash(nextNextAuthKey.publicKeyMultibase!);
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
       log: didLog,
