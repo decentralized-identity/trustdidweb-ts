@@ -122,7 +122,6 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
       // TODO check timestamps make sense
     }
     meta.updated = versionTime;
-
     // doc patches & proof
     let newDoc = state;
     if (version === '1') {
@@ -135,8 +134,8 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
       meta.prerotation = parameters.prerotation === true;
       meta.witnesses = parameters.witnesses || meta.witnesses;
       meta.witnessThreshold = parameters.witnessThreshold || meta.witnessThreshold || meta.witnesses.length;
-      nextKeyHashes = parameters.nextKeyHashes ?? [];
-      newKeysAreValid(meta.updateKeys, [], nextKeyHashes, false, meta.prerotation === true);
+      meta.nextKeyHashes = parameters.nextKeyHashes ?? [];
+      newKeysAreValid(meta.updateKeys, [], meta.nextKeyHashes, false, meta.prerotation === true);
       const logEntry = {
         versionId: PLACEHOLDER,
         versionTime: meta.created,
