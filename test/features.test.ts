@@ -2,7 +2,7 @@ import { beforeAll, expect, test} from "bun:test";
 import { createDID, resolveDIDFromLog, updateDID } from "../src/method";
 import { mock } from "bun-bagel";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
-import { deriveHash, createDate, clone } from "../src/utils";
+import { deriveHash, createDate, clone, deriveNextKeyHash } from "../src/utils";
 import { createMockDIDLog} from './utils';
 
 let log: DIDLog;
@@ -243,21 +243,21 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Create", asy
       updateKeys: [authKey1.publicKeyMultibase!],
       verificationMethods: [authKey1],
       prerotation: true,
-      nextKeyHashes: [await deriveHash(authKey2.publicKeyMultibase)]
+      nextKeyHashes: [await deriveNextKeyHash(authKey2.publicKeyMultibase!)]
     });
     const {log: updatedLog} = await updateDID({
       log,
       signer: createSigner(authKey1),
-      updateKeys: [authKey3.publicKeyMultibase!],
-      verificationMethods: [authKey3],
-      nextKeyHashes: [await deriveHash(authKey3.publicKeyMultibase)]
+      updateKeys: [authKey2.publicKeyMultibase!],
+      verificationMethods: [authKey2],
+      nextKeyHashes: [await deriveNextKeyHash(authKey3.publicKeyMultibase!)]
     });
   } catch(e) {
     err = e;
   }
 
   expect(err).toBeDefined();
-  expect(err.message).toContain('invalid updateKeys')
+  expect(err.message).toContain('Invalid update keys')
 });
 
 test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when enabled in Create)", async () => {
@@ -287,7 +287,7 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when e
   }
 
   expect(err).toBeDefined();
-  expect(err.message).toContain('invalid updateKeys')
+  expect(err.message).toContain('Invalid update keys')
   delete process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH;
 });
 
@@ -321,7 +321,7 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Update", asy
   }
 
   expect(err).toBeDefined();
-  expect(err.message).toContain('invalid updateKeys')
+  expect(err.message).toContain('Invalid update keys')
 });
 
 test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when enabled in Update)", async () => {
@@ -359,7 +359,7 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when e
   }
 
   expect(err).toBeDefined();
-  expect(err.message).toContain('invalid updateKeys')
+  expect(err.message).toContain('Invalid update keys')
   delete process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH;
   delete process.env.IGNORE_ASSERTION_DOCUMENT_STATE_IS_VALID;
   delete process.env.IGNORE_ASSERTION_HASH_CHAIN_IS_VALID;
