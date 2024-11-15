@@ -110,9 +110,9 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
   };
   let host = '';
   let i = 0;
-
-  for (const entry of resolutionLog) {
-    const { versionId, versionTime, parameters, state, proof } = entry;
+  
+  while (i < resolutionLog.length) {
+    const { versionId, versionTime, parameters, state, proof } = resolutionLog[i];
     const [version, entryHash] = versionId.split('-');
     if (parseInt(version) !== i + 1) {
       throw new Error(`version '${version}' in log doesn't match expected '${i + 1}'.`);
@@ -122,7 +122,6 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
       // TODO check timestamps make sense
     }
     meta.updated = versionTime;
-    // doc patches & proof
     let newDoc = state;
     if (version === '1') {
       meta.created = versionTime;
@@ -157,6 +156,7 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
       if (parameters.prerotation === true && (!parameters.nextKeyHashes || parameters.nextKeyHashes.length === 0)) {
         throw new Error("prerotation enabled without nextKeyHashes");
       }
+
       const newHost = newDoc.id.split(':').at(-1);
       if (!meta.portable && newHost !== host) {
         throw new Error("Cannot move DID: portability is disabled");
@@ -164,18 +164,23 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
         host = newHost;
       }
 
-      // First validate with current keys
-      const verified = await documentStateIsValid(entry, meta.updateKeys, meta.witnesses);
+      const verified = await documentStateIsValid(resolutionLog[i], meta.updateKeys, meta.witnesses);
       if (!verified) {
         throw new Error(`version ${meta.versionId} failed verification of the proof.`)
       }
 
-      // Then validate hash chain
-      if (!hashChainValid(`${i+1}-${entryHash}`, entry.versionId)) {
+      if (!hashChainValid(`${i+1}-${entryHash}`, versionId)) {
         throw new Error(`Hash chain broken at '${meta.versionId}'`);
       }
 
-      // After validation, update meta state
+      await newKeysAreInNextKeys(
+        parameters.updateKeys ?? [], 
+        meta.nextKeyHashes ?? [], // Use meta (previous state) for validation
+        meta.prerotation,
+        parameters.prerotation === true
+      );
+
+      // After all validation passes, update meta state
       if (parameters.updateKeys) {
         meta.updateKeys = parameters.updateKeys;
       }
@@ -185,22 +190,13 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
       if (parameters.prerotation === true) {
         meta.prerotation = true;
         meta.nextKeyHashes = parameters.nextKeyHashes || [];
-      }
-      if (parameters.nextKeyHashes) {
+      } else if (parameters.nextKeyHashes) {
         meta.nextKeyHashes = parameters.nextKeyHashes;
       }
       if (parameters.witnesses) {
         meta.witnesses = parameters.witnesses;
         meta.witnessThreshold = parameters.witnessThreshold || parameters.witnesses.length;
       }
-
-      // Finally validate key rotation
-      await newKeysAreInNextKeys(
-        parameters.updateKeys ?? [], 
-        meta.nextKeyHashes ?? [], 
-        meta.prerotation, 
-        parameters.prerotation === true
-      );
     }
     doc = clone(newDoc);
     did = doc.id;
@@ -234,7 +230,12 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
     controller, domain, nextKeyHashes, prerotation, witnesses, witnessThreshold
   } = options;
   let {did, doc, meta} = await resolveDIDFromLog(log);
-  
+
+  // Check for required nextKeyHashes for prerotation
+  if ((meta.prerotation || prerotation === true) && (!nextKeyHashes || nextKeyHashes.length === 0)) {
+    throw new Error("nextKeyHashes are required if prerotation enabled");
+  }
+
   await newKeysAreInNextKeys(updateKeys ?? [], nextKeyHashes ?? [], meta.prerotation, prerotation ?? false);
 
   if (domain) {
@@ -254,10 +255,12 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
   }
   const params = {
     ...(updateKeys ? {updateKeys} : {}),
-    ...(prerotation ? {
+    ...(prerotation === true ? {
       prerotation: true,
       nextKeyHashes: nextKeyHashes || []
-    } : {}),
+    } : (nextKeyHashes ? {
+      nextKeyHashes
+    } : {})),
     ...(witnesses || meta.witnesses ? {
       witnesses: witnesses || meta.witnesses,
       witnessThreshold: witnesses ? witnessThreshold || witnesses.length : meta.witnessThreshold

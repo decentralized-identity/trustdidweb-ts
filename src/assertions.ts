@@ -90,19 +90,12 @@ export const hashChainValid = (derivedHash: string, logEntryHash: string) => {
 export const newKeysAreInNextKeys = async (updateKeys: string[], nextKeyHashes: string[], previousPrerotation: boolean, prerotation: boolean) => {
   if (process.env.IGNORE_ASSERTION_NEW_KEYS_ARE_VALID) return true;
 
-  // Case 1: Enabling prerotation requires nextKeyHashes
-  if (prerotation && (!nextKeyHashes || nextKeyHashes.length === 0)) {
-    throw new Error(`nextKeyHashes are required if prerotation enabled`);
-  }
-
-  // Case 2: If prerotation was previously enabled AND we're not enabling it now,
-  // validate updateKeys against nextKeyHashes
   if (previousPrerotation && !prerotation) {
-    const hashedUpdateKeys = await Promise.all(updateKeys.map(key => deriveNextKeyHash(key)));
-    const inNextKeyHashes = hashedUpdateKeys.every(hashedUpdateKey => nextKeyHashes.includes(hashedUpdateKey));
-    if (!inNextKeyHashes) {
-      const expectedHashes = await Promise.all(updateKeys.map(key => deriveNextKeyHash(key)));
-      throw new Error(`Invalid update keys. Expected hashes [${expectedHashes.join(', ')}] but got nextKeyHashes [${nextKeyHashes.join(', ')}]`);
+    for (const key of updateKeys) {
+      const keyHash = await deriveNextKeyHash(key);
+      if (!nextKeyHashes.includes(keyHash)) {
+        throw new Error(`Invalid update key ${keyHash}. Not found in nextKeyHashes ${nextKeyHashes}`);
+      }
     }
   }
 
