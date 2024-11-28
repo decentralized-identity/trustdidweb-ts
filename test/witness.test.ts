@@ -34,8 +34,12 @@ const getWitnessDIDLog = async () => {
 const isWitnessServerRunning = async () => {
   try {
     const response = await fetch(`${WITNESS_SERVER_URL}/health`);
-    return response.ok;
+    if (response.ok) {
+      return true;
+    }
+    return false;
   } catch (error) {
+    console.error('Witness server is not running');
     return false;
   }
 };
@@ -61,7 +65,6 @@ const runWitnessTests = async () => {
       const didLog = await getWitnessDIDLog();
       const {did, meta} = await resolveDIDFromLog(didLog as DIDLog);
       WITNESS_SCID = meta.scid;
-      console.log(`Witness DID ${did} found`);
     });
 
     test("Create DID with witness", async () => {

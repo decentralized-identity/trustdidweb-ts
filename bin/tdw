@@ -1,0 +1,8 @@
+#!/usr/bin/env bun
+import { main } from "../src/cli.ts";
+
+// Execute the main CLI function
+main().catch(error => {
+  console.error('Fatal error:', error);
+  process.exit(1);
+}); 
