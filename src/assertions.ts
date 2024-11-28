@@ -1,6 +1,6 @@
 import * as ed from '@noble/ed25519';
 import { base58btc } from "multiformats/bases/base58";
-import { bytesToHex, createSCID, deriveHash, deriveNextKeyHash, resolveVM } from "./utils";
+import { bytesToHex, createSCID, deriveNextKeyHash, resolveVM } from "./utils";
 import { canonicalize } from 'json-canonicalize';
 import { createHash } from 'node:crypto';
 
@@ -9,7 +9,8 @@ const isKeyAuthorized = (verificationMethod: string, updateKeys: string[]): bool
 
   if (verificationMethod.startsWith('did:key:')) {
     const key = verificationMethod.split('did:key:')[1].split('#')[0];
-    return updateKeys.includes(key);
+    const authorized = updateKeys.includes(key);
+    return authorized;
   }
   return false;
 };
@@ -26,7 +27,12 @@ const isWitnessAuthorized = (verificationMethod: string, witnesses: string[]): b
 
 export const documentStateIsValid = async (doc: any, updateKeys: string[], witnesses: string[] = []) => {
   if (process.env.IGNORE_ASSERTION_DOCUMENT_STATE_IS_VALID) return true;
-  const {proof: proofs, ...rest} = doc;
+  
+  let {proof: proofs, ...rest} = doc;
+  if (!Array.isArray(proofs)) {
+    proofs = [proofs];
+  }
+
   for (let i = 0; i < proofs.length; i++) {
     const proof = proofs[i];
 
@@ -81,20 +87,18 @@ export const hashChainValid = (derivedHash: string, logEntryHash: string) => {
   return derivedHash === logEntryHash;
 }
 
-export const newKeysAreValid = (updateKeys: string[], previousNextKeyHashes: string[], nextKeyHashes: string[], previousPrerotation: boolean, prerotation: boolean) => {
+export const newKeysAreInNextKeys = async (updateKeys: string[], nextKeyHashes: string[], previousPrerotation: boolean, prerotation: boolean) => {
   if (process.env.IGNORE_ASSERTION_NEW_KEYS_ARE_VALID) return true;
-  if (prerotation && nextKeyHashes.length === 0) {
-    throw new Error(`nextKeyHashes are required if prerotation enabled`);
-  }
-  if(previousPrerotation) {
-    const inNextKeyHashes = updateKeys.reduce((result, key) => {
-      const hashedKey = deriveNextKeyHash(key);
-      return result && previousNextKeyHashes.includes(hashedKey);
-    }, true);
-    if (!inNextKeyHashes) {
-      throw new Error(`invalid updateKeys ${updateKeys}`);
+
+  if (previousPrerotation && !prerotation) {
+    for (const key of updateKeys) {
+      const keyHash = await deriveNextKeyHash(key);
+      if (!nextKeyHashes.includes(keyHash)) {
+        throw new Error(`Invalid update key ${keyHash}. Not found in nextKeyHashes ${nextKeyHashes}`);
+      }
     }
   }
+
   return true;
 }
 

@@ -5,6 +5,8 @@ import { nanoid } from 'nanoid';
 import { sha256 } from 'multiformats/hashes/sha2'
 import { resolveDIDFromLog } from './method';
 import { join } from 'path';
+import { CID } from 'multiformats/cid';
+import * as raw from 'multiformats/codecs/raw';
 
 export const readLogFromDisk = (path: string): DIDLog => {
   return readLogFromString(fs.readFileSync(path, 'utf8'));
@@ -139,15 +141,15 @@ export const createSCID = async (logEntryHash: string): Promise<string> => {
   return logEntryHash;
 }
 
-export const deriveHash = (input: any): string => {
+export const deriveHash = async (input: any): Promise<string> => {
   const data = canonicalize(input);
-  const encoder = new TextEncoder();
-  return base58btc.encode((sha256.digest(encoder.encode(data)) as any).bytes);
+  const hash = await sha256.digest(new TextEncoder().encode(data));
+  return base58btc.encode(hash.bytes)
 }
 
-export const deriveNextKeyHash = (input: string): string => {
-  const encoder = new TextEncoder();
-  return base58btc.encode((sha256.digest(encoder.encode(input)) as any).bytes);
+export const deriveNextKeyHash = async (input: string): Promise<string> => {
+  const hash = await sha256.digest(new TextEncoder().encode(input));
+  return base58btc.encode(hash.bytes);
 }
 
 export const createDIDDoc = async (options: CreateDIDInterface): Promise<{doc: DIDDoc}> => {

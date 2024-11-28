@@ -2,7 +2,7 @@ import { beforeAll, expect, test} from "bun:test";
 import { createDID, resolveDIDFromLog, updateDID } from "../src/method";
 import { mock } from "bun-bagel";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
-import { deriveHash, createDate, clone } from "../src/utils";
+import { deriveHash, createDate, clone, deriveNextKeyHash } from "../src/utils";
 import { createMockDIDLog} from './utils';
 
 let log: DIDLog;
@@ -242,38 +242,39 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Create", asy
       updateKeys: [authKey1.publicKeyMultibase!],
       verificationMethods: [authKey1],
       prerotation: true,
-      nextKeyHashes: [deriveHash(authKey2.publicKeyMultibase)]
+      nextKeyHashes: [await deriveNextKeyHash(authKey2.publicKeyMultibase!)]
     });
     const {log: updatedLog} = await updateDID({
       log,
       signer: createSigner(authKey1),
-      updateKeys: [authKey3.publicKeyMultibase!],
-      verificationMethods: [authKey3],
-      nextKeyHashes: [deriveHash(authKey3.publicKeyMultibase)]
+      updateKeys: [authKey2.publicKeyMultibase!],
+      verificationMethods: [authKey2],
+      nextKeyHashes: [await deriveNextKeyHash(authKey3.publicKeyMultibase!)]
     });
   } catch(e) {
     err = e;
   }
 
   expect(err).toBeDefined();
-  expect(err.message).toContain('invalid updateKeys')
+  expect(err.message).toContain('Invalid update key')
 });
 
 test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when enabled in Create)", async () => {
   let err: any;
   process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH = "true";
+  process.env.IGNORE_ASSERTION_HASH_CHAIN_IS_VALID = "true";
   const mockLog = createMockDIDLog([
     {
       versionId: '1-mock-hash',
       versionTime: createDate(),
-      parameters: { method: "did:tdw:0.4", scid: "test-scid", prerotation: true, nextKeyHashes: ['213123123']},
+      parameters: { updateKeys: ['z6MkrgaxvewsoLCWRn8GnYBGUygJmd5CHUUN46GYSHmQrkC7'], method: "did:tdw:0.4", scid: "test-scid", prerotation: true, nextKeyHashes: ['QmbWm3djZxbAbqZjqFLMP2ywokqFRD2PwoTcUSdbbsdpkM']},
       state: { id: "did:tdw:example.com:test-scid" },
       proof: []
     },
     {
       versionId: '2-mock-hash',
       versionTime: createDate().toString(),
-      parameters: {updateKeys: ['1213'], nextKeyHashes: ['123']},
+      parameters: {updateKeys: ['z6MkjkTQkTkTh1czqfofbtDFUVEr6Hzzn1zEZ16BYi67TPoE'], nextKeyHashes: ['123']},
       state: { id: "did:tdw:example.com:test-scid" },
       proof: []
     }
@@ -285,7 +286,7 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when e
   }
 
   expect(err).toBeDefined();
-  expect(err.message).toContain('invalid updateKeys')
+  expect(err.message).toContain('Invalid update key')
   delete process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH;
 });
 
@@ -303,23 +304,23 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Update", asy
       log,
       signer: createSigner(authKey1),
       updateKeys: [authKey2.publicKeyMultibase!],
-      verificationMethods: [authKey3],
+      verificationMethods: [authKey2],
       prerotation: true,
-      nextKeyHashes: [deriveHash(authKey3.publicKeyMultibase)]
+      nextKeyHashes: [await deriveHash(authKey3.publicKeyMultibase)]
     });
     const {log: updatedLog2} = await updateDID({
       log: updatedLog,
       signer: createSigner(authKey2),
       updateKeys: [authKey4.publicKeyMultibase!],
       verificationMethods: [authKey3],
-      nextKeyHashes: [authKey1.publicKeyMultibase!]
+      nextKeyHashes: [await deriveNextKeyHash(authKey1.publicKeyMultibase!)]
     });
   } catch(e) {
     err = e;
   }
 
   expect(err).toBeDefined();
-  expect(err.message).toContain('invalid updateKeys')
+  expect(err.message).toContain('Invalid update key')
 });
 
 test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when enabled in Update)", async () => {
@@ -345,7 +346,7 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when e
     {
       versionId: '3-mock-hash',
       versionTime: createDate().toString(),
-      parameters: {updateKeys: ['12312312312321']},
+      parameters: {updateKeys: ['12312312312321'], nextKeyHashes: ['1312311']},
       state: { id: "did:tdw:example.com:test-scid" },
       proof: []
     },
@@ -357,7 +358,7 @@ test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Read (when e
   }
 
   expect(err).toBeDefined();
-  expect(err.message).toContain('invalid updateKeys')
+  expect(err.message).toContain('Invalid update key')
   delete process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH;
   delete process.env.IGNORE_ASSERTION_DOCUMENT_STATE_IS_VALID;
   delete process.env.IGNORE_ASSERTION_HASH_CHAIN_IS_VALID;
@@ -379,7 +380,15 @@ test("DID log with portable false should not resolve if moved", async () => {
       versionId: `${nonPortableDID.log.length + 1}-test`,
       versionTime: newTimestamp,
       parameters: { updateKeys: [authKey1.publicKeyMultibase]},
-      state: newDoc
+      state: newDoc,
+      proof: [{
+        type: "DataIntegrityProof",
+        cryptosuite: "eddsa-jcs-2022",
+        verificationMethod: `did:key:${authKey1.publicKeyMultibase}`,
+        created: newTimestamp,
+        proofPurpose: "authentication",
+        proofValue: "badProofValue"
+      }]
     };
 
     const badLog: DIDLog = [
