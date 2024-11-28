@@ -4,6 +4,7 @@ import { mock } from "bun-bagel";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 import { deriveHash, createDate, clone, deriveNextKeyHash } from "../src/utils";
 import { createMockDIDLog} from './utils';
+import type { DIDLog, VerificationMethod } from "../src/interfaces";
 
 let log: DIDLog;
 let authKey1: VerificationMethod,

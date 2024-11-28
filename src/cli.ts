@@ -1,8 +1,11 @@
+#!/usr/bin/env node
+
 import { createDID, updateDID, deactivateDID, resolveDIDFromLog } from './method';
 import { createSigner, generateEd25519VerificationMethod } from './cryptography';
 import { fetchLogFromIdentifier, readLogFromDisk, writeLogToDisk, writeVerificationMethodToEnv } from './utils';
 import { dirname } from 'path';
 import fs from 'fs';
+import { DIDLog, ServiceEndpoint, VerificationMethod } from './interfaces';
 
 const usage = `
 Usage: bun run cli [command] [options]

@@ -2,7 +2,16 @@
   "name": "trustdidweb-ts",
   "module": "src/index.ts",
   "type": "module",
-  "version": "0.0.4",
+  "version": "0.0.5",
+  "main": "dist/node/index.js",
+  "browser": "dist/browser/index.js",
+  "types": "dist/types/index.d.ts",
+  "files": [
+    "dist/node",
+    "dist/browser",
+    "dist/types",
+    "dist/cli"
+  ],
   "scripts": {
     "dev": "bun --watch --inspect-wait ./src/resolver.ts",
     "server": "bun --watch ./src/resolver.ts",
@@ -10,9 +19,17 @@
     "test:watch": "bun test --watch",
     "test:bail": "bun test --watch --bail --verbose",
     "test:log": "mkdir -p ./test/logs && LOG_RESOLVES=true bun test &> ./test/logs/test-run.txt",
-    "cli": "bun src/cli.ts"
+    "cli": "bun src/cli.ts",
+    "build": "bun run scripts/build.ts",
+    "build:clean": "rm -rf dist",
+    "build:all": "bun run build:node && bun run build:browser && bun run build:types",
+    "build:node": "bun build ./src/index.ts --outdir ./dist/node --target node",
+    "build:browser": "bun build ./src/index.ts --outdir ./dist/browser --target browser",
+    "build:types": "tsc --emitDeclarationOnly --declaration --declarationDir dist/types",
+    "prepublishOnly": "bun run build"
   },
   "devDependencies": {
+    "@types/bun": "^1.1.14",
     "bun-bagel": "^1.1.0",
     "bun-types": "latest"
   },
@@ -29,6 +46,6 @@
     "nanoid": "^5.0.8"
   },
   "bin": {
-    "tdw": "./bin/tdw"
+    "tdw": "./dist/cli/tdw.js"
   }
 }

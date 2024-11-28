@@ -4,9 +4,7 @@ import { canonicalize } from 'json-canonicalize';
 import { nanoid } from 'nanoid';
 import { sha256 } from 'multiformats/hashes/sha2'
 import { resolveDIDFromLog } from './method';
-import { join } from 'path';
-import { CID } from 'multiformats/cid';
-import * as raw from 'multiformats/codecs/raw';
+import type { CreateDIDInterface, DataIntegrityProof, DIDDoc, DIDLog, VerificationMethod } from './interfaces';
 
 export const readLogFromDisk = (path: string): DIDLog => {
   return readLogFromString(fs.readFileSync(path, 'utf8'));
@@ -32,7 +30,7 @@ export const writeLogToDisk = (path: string, log: DIDLog) => {
 }
 
 export const writeVerificationMethodToEnv = (verificationMethod: VerificationMethod) => {
-  const envFilePath = join(process.cwd(), '.env');
+  const envFilePath = process.cwd() + '/.env';
   
   const vmData = {
     id: verificationMethod.id,

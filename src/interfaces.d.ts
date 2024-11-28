@@ -1,4 +1,4 @@
-interface DIDResolutionMeta {
+export interface DIDResolutionMeta {
   versionId: string;
   created: string;
   updated: string;
@@ -13,7 +13,7 @@ interface DIDResolutionMeta {
   witnessThreshold: number;
 }
 
-interface DIDDoc {
+export interface DIDDoc {
   "@context"?: string | string[] | object | object[];
   id?: string;
   controller?: string | string[];
@@ -27,14 +27,7 @@ interface DIDDoc {
   service?: ServiceEndpoint[];
 }
 
-// Remove the DIDOperation interface as it's no longer needed
-// interface DIDOperation {
-//   op: string;
-//   path: string;
-//   value: any;
-// }
-
-interface DataIntegrityProof {
+export interface DataIntegrityProof {
   id?: string;
   type: string;
   cryptosuite: string;
@@ -44,7 +37,7 @@ interface DataIntegrityProof {
   proofPurpose: string;
 }
 
-interface DIDLogEntry {
+export interface DIDLogEntry {
   versionId: string;
   versionTime: string;
   parameters: {
@@ -58,19 +51,19 @@ interface DIDLogEntry {
     witnessThreshold?: number;
     deactivated?: boolean;
   };
-  state: DIDDoc; // Change this to specifically hold the DID document
+  state: DIDDoc;
   proof?: DataIntegrityProof[];
 }
 
-type DIDLog = DIDLogEntry[];
+export type DIDLog = DIDLogEntry[];
 
-interface ServiceEndpoint {
+export interface ServiceEndpoint {
   id?: string;
   type: string | string[];
   serviceEndpoint?: string | string[] | any;
 }
 
-interface VerificationMethod {
+export interface VerificationMethod {
   id?: string;
   type: 'Multikey';
   purpose?: 'authentication' | 'assertionMethod' | 'keyAgreement' | 'capabilityInvocation' | 'capabilityDelegation';
@@ -81,7 +74,7 @@ interface VerificationMethod {
   use?: string;
 }
 
-interface CreateDIDInterface {
+export interface CreateDIDInterface {
   domain: string;
   updateKeys: string[];
   signer: (doc: any) => Promise<{proof: any}>;
@@ -96,13 +89,13 @@ interface CreateDIDInterface {
   witnessThreshold?: number;
 }
 
-interface SignDIDDocInterface {
+export interface SignDIDDocInterface {
   document: any;
   proof: any;
   verificationMethod: VerificationMethod
 }
 
-interface UpdateDIDInterface {
+export interface UpdateDIDInterface {
   log: DIDLog;
   signer: (doc: any) => Promise<{proof: any}>;
   updateKeys?: string[];
@@ -120,7 +113,7 @@ interface UpdateDIDInterface {
   witnessThreshold?: number;
 }
 
-interface DeactivateDIDInterface {
+export interface DeactivateDIDInterface {
   log: DIDLog;
   signer: (doc: any) => Promise<{proof: any}>;
 }

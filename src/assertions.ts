@@ -2,7 +2,7 @@ import * as ed from '@noble/ed25519';
 import { base58btc } from "multiformats/bases/base58";
 import { bytesToHex, createSCID, deriveNextKeyHash, resolveVM } from "./utils";
 import { canonicalize } from 'json-canonicalize';
-import { createHash } from 'node:crypto';
+import { createHash } from './utils/crypto';
 
 const isKeyAuthorized = (verificationMethod: string, updateKeys: string[]): boolean => {
   if (process.env.IGNORE_ASSERTION_KEY_IS_AUTHORIZED) return true;
@@ -70,8 +70,8 @@ export const documentStateIsValid = async (doc: any, updateKeys: string[], witne
 
     const {proofValue, ...restProof} = proof;
     const signature = base58btc.decode(proofValue);
-    const dataHash = createHash('sha256').update(canonicalize(rest)).digest();
-    const proofHash = createHash('sha256').update(canonicalize(restProof)).digest();
+    const dataHash = await createHash(canonicalize(rest));
+    const proofHash = await createHash(canonicalize(restProof));
     const input = Buffer.concat([proofHash, dataHash]);
 
     const verified = await ed.verifyAsync(Buffer.from(signature).toString('hex'), Buffer.from(input).toString('hex'), Buffer.from(publicKey.slice(2)).toString('hex'));
