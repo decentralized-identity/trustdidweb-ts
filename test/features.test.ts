@@ -223,6 +223,7 @@ test("Require `nextKeyHashes` if prerotation enabled in Read (when enabled in Up
   ];
   try {
     process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH = "true";
+    process.env.IGNORE_ASSERTION_HASH_CHAIN_IS_VALID = "true";
     const {did} = await resolveDIDFromLog(mockLog)
   } catch(e) {
     err = e;
@@ -231,6 +232,7 @@ test("Require `nextKeyHashes` if prerotation enabled in Read (when enabled in Up
   expect(err).toBeDefined();
   expect(err.message).toContain('prerotation enabled without nextKeyHashes')
   delete process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH;
+  delete process.env.IGNORE_ASSERTION_HASH_CHAIN_IS_VALID;
 });
 
 test("updateKeys MUST be in nextKeyHashes if prerotation enabled in Create", async () => {

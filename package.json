@@ -1,13 +1,14 @@
 {
   "name": "trustdidweb-ts",
-  "module": "src/index.ts",
+  "module": "dist/esm/index.js",
   "type": "module",
-  "version": "0.0.5",
-  "main": "dist/node/index.js",
+  "version": "0.0.17",
+  "main": "dist/cjs/index.cjs",
   "browser": "dist/browser/index.js",
   "types": "dist/types/index.d.ts",
   "files": [
-    "dist/node",
+    "dist/cjs",
+    "dist/esm",
     "dist/browser",
     "dist/types",
     "dist/cli"
@@ -22,10 +23,6 @@
     "cli": "bun src/cli.ts",
     "build": "bun run scripts/build.ts",
     "build:clean": "rm -rf dist",
-    "build:all": "bun run build:node && bun run build:browser && bun run build:types",
-    "build:node": "bun build ./src/index.ts --outdir ./dist/node --target node",
-    "build:browser": "bun build ./src/index.ts --outdir ./dist/browser --target browser",
-    "build:types": "tsc --emitDeclarationOnly --declaration --declarationDir dist/types",
     "prepublishOnly": "bun run build"
   },
   "devDependencies": {
@@ -37,9 +34,9 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@interop/base58-universal": "^1.0.0",
     "@noble/curves": "^1.6.0",
     "@noble/ed25519": "^2.1.0",
+    "bs58": "^6.0.0",
     "elysia": "^0.8.17",
     "json-canonicalize": "^1.0.6",
     "multiformats": "^13.3.1",
@@ -47,5 +44,13 @@
   },
   "bin": {
     "tdw": "./dist/cli/tdw.js"
+  },
+  "exports": {
+    ".": {
+      "browser": "./dist/browser/index.js",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.cjs",
+      "types": "./dist/types/index.d.ts"
+    }
   }
 }

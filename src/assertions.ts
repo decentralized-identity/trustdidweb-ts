@@ -1,11 +1,14 @@
 import * as ed from '@noble/ed25519';
 import { base58btc } from "multiformats/bases/base58";
-import { bytesToHex, createSCID, deriveNextKeyHash, resolveVM } from "./utils";
+import { createSCID, deriveNextKeyHash, resolveVM } from "./utils";
 import { canonicalize } from 'json-canonicalize';
 import { createHash } from './utils/crypto';
+import { config } from './config';
+import { bufferToString, concatBuffers } from './utils/buffer';
+import { createBuffer } from './utils/buffer';
 
 const isKeyAuthorized = (verificationMethod: string, updateKeys: string[]): boolean => {
-  if (process.env.IGNORE_ASSERTION_KEY_IS_AUTHORIZED) return true;
+  if (config.getEnvValue('IGNORE_ASSERTION_KEY_IS_AUTHORIZED') === 'true') return true;
 
   if (verificationMethod.startsWith('did:key:')) {
     const key = verificationMethod.split('did:key:')[1].split('#')[0];
@@ -16,7 +19,7 @@ const isKeyAuthorized = (verificationMethod: string, updateKeys: string[]): bool
 };
 
 const isWitnessAuthorized = (verificationMethod: string, witnesses: string[]): boolean => {
-  if (process.env.IGNORE_WITNESS_IS_AUTHORIZED) return true;
+  if (config.getEnvValue('IGNORE_WITNESS_IS_AUTHORIZED') === 'true') return true;
 
   if (verificationMethod.startsWith('did:tdw:')) {
     const didWithoutFragment = verificationMethod.split('#')[0];
@@ -26,7 +29,7 @@ const isWitnessAuthorized = (verificationMethod: string, witnesses: string[]): b
 };
 
 export const documentStateIsValid = async (doc: any, updateKeys: string[], witnesses: string[] = []) => {
-  if (process.env.IGNORE_ASSERTION_DOCUMENT_STATE_IS_VALID) return true;
+  if (config.getEnvValue('IGNORE_ASSERTION_DOCUMENT_STATE_IS_VALID') === 'true') return true;
   
   let {proof: proofs, ...rest} = doc;
   if (!Array.isArray(proofs)) {
@@ -72,9 +75,18 @@ export const documentStateIsValid = async (doc: any, updateKeys: string[], witne
     const signature = base58btc.decode(proofValue);
     const dataHash = await createHash(canonicalize(rest));
     const proofHash = await createHash(canonicalize(restProof));
-    const input = Buffer.concat([proofHash, dataHash]);
+    const input = concatBuffers(proofHash, dataHash);
 
-    const verified = await ed.verifyAsync(Buffer.from(signature).toString('hex'), Buffer.from(input).toString('hex'), Buffer.from(publicKey.slice(2)).toString('hex'));
+    const signatureHex = bufferToString(signature, 'hex');
+    const inputHex = bufferToString(input, 'hex');
+    const publicKeyHex = bufferToString(publicKey.slice(2), 'hex');
+
+    const verified = await ed.verifyAsync(
+      signatureHex,
+      inputHex,
+      publicKeyHex
+    );
+    
     if (!verified) {
       throw new Error(`Proof ${i} failed verification`);
     }
@@ -83,12 +95,12 @@ export const documentStateIsValid = async (doc: any, updateKeys: string[], witne
 }
 
 export const hashChainValid = (derivedHash: string, logEntryHash: string) => {
-  if (process.env.IGNORE_ASSERTION_HASH_CHAIN_IS_VALID) return true;
+  if (config.getEnvValue('IGNORE_ASSERTION_HASH_CHAIN_IS_VALID') === 'true') return true;
   return derivedHash === logEntryHash;
 }
 
 export const newKeysAreInNextKeys = async (updateKeys: string[], nextKeyHashes: string[], previousPrerotation: boolean, prerotation: boolean) => {
-  if (process.env.IGNORE_ASSERTION_NEW_KEYS_ARE_VALID) return true;
+  if (config.getEnvValue('IGNORE_ASSERTION_NEW_KEYS_ARE_VALID') === 'true') return true;
 
   if (previousPrerotation && !prerotation) {
     for (const key of updateKeys) {
@@ -103,6 +115,6 @@ export const newKeysAreInNextKeys = async (updateKeys: string[], nextKeyHashes: 
 }
 
 export const scidIsFromHash = async (scid: string, hash: string) => {
-  if (process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH) return true;
+  if (config.getEnvValue('IGNORE_ASSERTION_SCID_IS_FROM_HASH') === 'true') return true;
   return scid === await createSCID(hash);
 }

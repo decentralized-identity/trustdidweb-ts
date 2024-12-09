@@ -6,6 +6,7 @@ import { canonicalize } from 'json-canonicalize';
 import { createHash } from './utils/crypto';
 import type { VerificationMethod } from './interfaces';
 import { hexToBytes } from '@noble/curves/abstract/utils';
+import { bufferToString, concatBuffers } from './utils/buffer';
 
 export const createSigner = (vm: VerificationMethod, useStatic: boolean = true) => {
   return async (doc: any) => {
@@ -19,9 +20,14 @@ export const createSigner = (vm: VerificationMethod, useStatic: boolean = true) 
       }
       const dataHash = await createHash(canonicalize(doc));
       const proofHash = await createHash(canonicalize(proof));
-      const input = Buffer.concat([proofHash, dataHash]);
+      const input = concatBuffers(proofHash, dataHash);
       const secretKey = base58btc.decode(vm.secretKeyMultibase!).slice(2);
-      const signature = await ed.signAsync(Buffer.from(input).toString('hex'), Buffer.from(secretKey).toString('hex'));
+      
+      // Convert input and secretKey to hex strings for ed25519 signing
+      const inputHex = bufferToString(input, 'hex');
+      const secretKeyHex = bufferToString(secretKey, 'hex');
+      
+      const signature = await ed.signAsync(inputHex, secretKeyHex);
 
       proof.proofValue = base58btc.encode(signature);
       return {...doc, proof};
@@ -48,11 +54,12 @@ export async function generateX25519VerificationMethod(): Promise<VerificationMe
   const edPrivateKey = ed.utils.randomPrivateKey();
   const edPublicKey = await ed.getPublicKeyAsync(edPrivateKey);
   
-  const pubHex = Buffer.from(edPublicKey).toString('hex');
-  const privHex = Buffer.from(edPrivateKey).toString('hex');
+  // Convert Uint8Arrays to hex strings for curve conversion
+  const pubHex = bufferToString(edPublicKey, 'hex');
+  const privHex = bufferToString(edPrivateKey, 'hex');
   
   const publicKey = edwardsToMontgomeryPub(hexToBytes(pubHex));
-  const privateKey = edwardsToMontgomeryPriv(hexToBytes(privHex)  );
+  const privateKey = edwardsToMontgomeryPriv(hexToBytes(privHex));
   
   return {
     type: 'Multikey',

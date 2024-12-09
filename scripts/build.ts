@@ -1,19 +1,25 @@
 import { BuildConfig } from "bun";
 import pkg from "../package.json";
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync, renameSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 
-const external = [
+// Base externals list
+const baseExternals = [
   ...Object.keys(pkg.dependencies || {}),
   ...Object.keys(pkg.peerDependencies || {})
 ];
+
+// CJS-specific externals (exclude ESM-only packages)
+const cjsExternals = baseExternals.filter(dep => 
+  !['@noble/ed25519', 'nanoid', 'multiformats'].includes(dep)
+);
 
 // Library builds
 const browserConfig: BuildConfig = {
   entrypoints: ["./src/index.ts"],
   minify: true,
   sourcemap: "external",
-  external,
+  external: baseExternals,
   target: "browser",
   format: "esm",
   outdir: "./dist/browser",
@@ -23,21 +29,76 @@ const browserConfig: BuildConfig = {
   },
 };
 
-const nodeConfig: BuildConfig = {
+const esmConfig: BuildConfig = {
   entrypoints: ["./src/index.ts"],
   minify: false,
   sourcemap: "external",
-  external,
+  external: baseExternals,
   target: "node",
   format: "esm",
-  outdir: "./dist/node",
+  outdir: "./dist/esm",
+};
+
+const dynamicImportToCjsPlugin = {
+  name: 'dynamic-import-to-cjs',
+  setup(build: any) {
+    build.onLoad({ filter: /\.[jt]s$/ }, async (args: any) => {
+      const contents = await Bun.file(args.path).text();
+      // Replace dynamic imports with requires
+      const transformed = contents.replace(
+        /await\s+import\((.*?)\)/g, 
+        'require($1)'
+      );
+      return { contents: transformed };
+    });
+  }
+};
+
+const cjsConfig: BuildConfig = {
+  entrypoints: ["./src/index.ts"],
+  minify: false,
+  sourcemap: "external",
+  external: cjsExternals,
+  target: "node",
+  format: "cjs",
+  outdir: "./dist/cjs",
+  loader: {
+    '.js': 'js'
+  },
+  plugins: [
+    dynamicImportToCjsPlugin,
+    {
+      name: 'inject-crypto',
+      setup(build: any) {
+        build.onLoad({ filter: /\.[jt]s$/ }, async (args: any) => {
+          const contents = await Bun.file(args.path).text();
+          // Inject crypto setup at the top of the bundle
+          const cryptoSetup = `
+            const { webcrypto } = require('crypto');
+            if (!globalThis.crypto) {
+              globalThis.crypto = webcrypto;
+            }
+            if (!globalThis.etc) {
+              globalThis.etc = {
+                sha512Async: async (data) => {
+                  const buffer = await globalThis.crypto.subtle.digest('SHA-512', data);
+                  return new Uint8Array(buffer);
+                }
+              };
+            }
+          `;
+          return { contents: cryptoSetup + contents };
+        });
+      }
+    }
+  ]
 };
 
 const cliConfig: BuildConfig = {
   entrypoints: ["./src/cli.ts"],
   minify: false,
   sourcemap: "external",
-  external,
+  external: baseExternals,
   target: "node",
   format: "esm",
   outdir: "./dist/cli",
@@ -56,18 +117,28 @@ function createDistPackageJson() {
     name: pkg.name,
     version: pkg.version,
     type: "module",
-    main: "./node/index.js",
-    module: "./browser/index.js",
+    main: "./cjs/index.cjs",
+    module: "./esm/index.js",
+    browser: "./browser/index.js",
     types: "./types/index.d.ts",
     bin: {
       "tdw": "./cli/tdw.js"
     },
     files: [
-      "node",
+      "cjs",
+      "esm", 
       "browser",
       "cli",
       "types"
     ],
+    exports: {
+      ".": {
+        "browser": "./browser/index.js",
+        "import": "./esm/index.js",
+        "require": "./cjs/index.cjs",
+        "types": "./types/index.d.ts"
+      }
+    },
     dependencies: pkg.dependencies,
     peerDependencies: pkg.peerDependencies,
   };
@@ -104,8 +175,22 @@ This package includes:
   writeFileSync("./dist/README.md", distReadme);
 }
 
+async function renameCjsFiles() {
+  const cjsDir = "./dist/cjs";
+  const files = readdirSync(cjsDir);
+  
+  await Promise.all(
+    files
+      .filter(file => file.endsWith('.js'))
+      .map(file => renameSync(
+        `${cjsDir}/${file}`,
+        `${cjsDir}/${file.replace('.js', '.cjs')}`
+      ))
+  );
+}
+
 async function build() {
-  console.log("External packages:", external);
+  console.log("External packages:", baseExternals);
   
   // Clean dist directory first
   await Bun.spawn(["rm", "-rf", "dist"], {
@@ -116,19 +201,32 @@ async function build() {
   // Create output directories
   console.log("\nCreating output directories...");
   await Promise.all([
-    ensureDir("./dist/node"),
+    ensureDir("./dist/cjs"),
+    ensureDir("./dist/esm"),
     ensureDir("./dist/browser"),
     ensureDir("./dist/cli"),
     ensureDir("./dist/types")
   ]);
 
-  // Build for Node.js
-  console.log("\nBuilding Node.js bundle...");
-  const nodeResult = await Bun.build(nodeConfig);
-  if (!nodeResult.success) {
-    console.error("Node.js build failed:", nodeResult.logs);
+  // Build ESM for Node.js
+  console.log("\nBuilding ESM bundle...");
+  const esmResult = await Bun.build(esmConfig);
+  if (!esmResult.success) {
+    console.error("ESM build failed:", esmResult.logs);
     process.exit(1);
   }
+
+  // Build CJS for Node.js
+  console.log("\nBuilding CJS bundle...");
+  const cjsResult = await Bun.build(cjsConfig);
+  if (!cjsResult.success) {
+    console.error("CJS build failed:", cjsResult.logs);
+    process.exit(1);
+  }
+
+  // Rename CJS files to .cjs
+  console.log("\nRenaming CJS files...");
+  await renameCjsFiles();
 
   // Build for Browser
   console.log("\nBuilding Browser bundle...");
@@ -198,7 +296,7 @@ async function build() {
   createDistReadme();
 
   // Verify output directories exist and have content
-  const dirs = ['node', 'browser', 'cli', 'types'].map(dir => `dist/${dir}`);
+  const dirs = ['cjs', 'esm', 'browser', 'cli', 'types'].map(dir => `dist/${dir}`);
   for (const dir of dirs) {
     if (!existsSync(dir)) {
       console.error(`Missing output directory: ${dir}`);

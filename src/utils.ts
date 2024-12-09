@@ -1,10 +1,11 @@
 import fs from 'node:fs';
-import * as base58btc from '@interop/base58-universal'
+import bs58 from 'bs58'
 import { canonicalize } from 'json-canonicalize';
 import { nanoid } from 'nanoid';
 import { sha256 } from 'multiformats/hashes/sha2'
 import { resolveDIDFromLog } from './method';
 import type { CreateDIDInterface, DataIntegrityProof, DIDDoc, DIDLog, VerificationMethod } from './interfaces';
+import { createBuffer, bufferToString } from './utils/buffer';
 
 export const readLogFromDisk = (path: string): DIDLog => {
   return readLogFromString(fs.readFileSync(path, 'utf8'));
@@ -49,7 +50,7 @@ export const writeVerificationMethodToEnv = (verificationMethod: VerificationMet
       envContent = fs.readFileSync(envFilePath, 'utf8');
       const match = envContent.match(/DID_VERIFICATION_METHODS=(.*)/);
       if (match && match[1]) {
-        const decodedData = Buffer.from(match[1], 'base64').toString('utf8');
+        const decodedData = bufferToString(createBuffer(match[1], 'base64'));
         existingData = JSON.parse(decodedData);
         
         // Check if verification method with same ID already exists
@@ -71,7 +72,7 @@ export const writeVerificationMethodToEnv = (verificationMethod: VerificationMet
     }
     
     const jsonData = JSON.stringify(existingData);
-    const encodedData = Buffer.from(jsonData).toString('base64');
+    const encodedData = bufferToString(createBuffer(jsonData), 'base64');
     
     // If DID_VERIFICATION_METHODS already exists, replace it
     if (envContent.includes('DID_VERIFICATION_METHODS=')) {
@@ -142,12 +143,12 @@ export const createSCID = async (logEntryHash: string): Promise<string> => {
 export const deriveHash = async (input: any): Promise<string> => {
   const data = canonicalize(input);
   const hash = await sha256.digest(new TextEncoder().encode(data));
-  return base58btc.encode(hash.bytes)
+  return bs58.encode(hash.bytes)
 }
 
 export const deriveNextKeyHash = async (input: string): Promise<string> => {
   const hash = await sha256.digest(new TextEncoder().encode(input));
-  return base58btc.encode(hash.bytes);
+  return bs58.encode(hash.bytes);
 }
 
 export const createDIDDoc = async (options: CreateDIDInterface): Promise<{doc: DIDDoc}> => {

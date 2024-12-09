@@ -6,6 +6,9 @@ import { fetchLogFromIdentifier, readLogFromDisk, writeLogToDisk, writeVerificat
 import { dirname } from 'path';
 import fs from 'fs';
 import { DIDLog, ServiceEndpoint, VerificationMethod } from './interfaces';
+import { config } from './config';
+import { createBuffer } from './utils/buffer';
+import { bufferToString } from './utils/buffer';
 
 const usage = `
 Usage: bun run cli [command] [options]
@@ -170,7 +173,7 @@ export async function handleUpdate(args: string[]) {
     console.log('Current meta:', meta);
     
     // Get the verification method from environment
-    const envVMs = JSON.parse(Buffer.from(process.env.DID_VERIFICATION_METHODS || 'W10=', 'base64').toString('utf8'));
+    const envVMs = JSON.parse(bufferToString(createBuffer(process.env.DID_VERIFICATION_METHODS || 'W10=', 'base64')));
     
     const vm = envVMs.find((vm: any) => vm.controller === did);
     console.log('\nFound VM:', vm);
@@ -275,7 +278,7 @@ export async function handleDeactivate(args: string[]) {
     }
 
     // Parse the VM from env
-    const vm = JSON.parse(Buffer.from(vmMatch[1], 'base64').toString('utf8'))[0];
+    const vm = JSON.parse(bufferToString(createBuffer(vmMatch[1], 'base64')))[0];
     if (!vm) {
       throw new Error('No verification method found in environment');
     }

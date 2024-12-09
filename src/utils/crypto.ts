@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-const isBrowser = typeof window !== 'undefined';
+import { config } from '../config';
 
 function stringToUint8Array(str: string): Uint8Array {
   const encoder = new TextEncoder();
@@ -14,7 +14,7 @@ function arrayBufferToHex(buffer: ArrayBufferLike | Uint8Array): string {
 }
 
 export async function createHash(data: string): Promise<Uint8Array> {
-  if (isBrowser) {
+  if (config.isBrowser) {
     const msgUint8 = stringToUint8Array(data);
     const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
     return new Uint8Array(hashBuffer);
