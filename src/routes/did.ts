@@ -1,6 +1,6 @@
 import { resolveDIDFromLog } from '../method';
 import { getFileUrl } from '../utils';
-
+import type { DIDLog } from '../interfaces';
 export const getLatestDIDDoc = async ({params: {id}}: {params: {id: string;};}) => {
   try {
     console.log(`Resolving DID ${id}`);

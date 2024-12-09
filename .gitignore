@@ -7,3 +7,5 @@ bun.lockb
 claude_chats
 *.jsonl
 did.json
+dist/
+*.tsbuildinfo

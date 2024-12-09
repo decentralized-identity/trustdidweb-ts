@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { createDID, deactivateDID, resolveDIDFromLog, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
-
+import type { DIDLog, VerificationMethod } from "../src/interfaces";
 
 describe("did:tdw normative tests", async () => {
   let newDoc1: any;

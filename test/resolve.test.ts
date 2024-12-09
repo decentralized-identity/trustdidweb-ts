@@ -2,6 +2,7 @@ import { describe, expect, test, beforeAll } from "bun:test";
 import { createDID, resolveDIDFromLog, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod, generateX25519VerificationMethod } from "../src/cryptography";
 import { clone } from "../src/utils";
+import type { DIDLog, VerificationMethod } from "../src/interfaces";
 
 describe("resolveDIDFromLog with verificationMethod", () => {
   let initialDID: string;

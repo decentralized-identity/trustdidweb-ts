@@ -1,7 +1,8 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { createDID, resolveDIDFromLog, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
-
+import type { DIDLog, VerificationMethod } from "../src/interfaces";
+import { isWitnessServerRunning } from "./utils";
 let WITNESS_SCID = "";
 const WITNESS_SERVER_URL = "http://localhost:8000"; // Update this to match your witness server URL
 const WITNESS_DOMAIN = WITNESS_SERVER_URL.split('//')[1].replace(':', '%3A');
@@ -31,43 +32,25 @@ const getWitnessDIDLog = async () => {
   }
 }
 
-const isWitnessServerRunning = async () => {
-  try {
-    const response = await fetch(`${WITNESS_SERVER_URL}/health`);
-    if (response.ok) {
-      return true;
-    }
-    return false;
-  } catch (error) {
-    console.error('Witness server is not running');
-    return false;
-  }
-};
+const serverRunning = await isWitnessServerRunning();
 
 const runWitnessTests = async () => {
-  const serverRunning = await isWitnessServerRunning();
-  
-  if (!serverRunning) {
-    describe("Witness functionality", () => {
-      test.skip("Witness server is not running", () => {
-        // This test will be skipped and shown in the test output
-      });
-    });
-    return;
-  }
 
   describe("Witness functionality", () => {
     let authKey: VerificationMethod;
     let initialDID: { did: string; doc: any; meta: any; log: DIDLog };
 
     beforeAll(async () => {
-      authKey = await generateEd25519VerificationMethod();
-      const didLog = await getWitnessDIDLog();
-      const {did, meta} = await resolveDIDFromLog(didLog as DIDLog);
-      WITNESS_SCID = meta.scid;
+      console.log("Server running:", serverRunning);
+      if (serverRunning) {
+        authKey = await generateEd25519VerificationMethod();
+        const didLog = await getWitnessDIDLog();
+        const {did, meta} = await resolveDIDFromLog(didLog as DIDLog);
+        WITNESS_SCID = meta.scid;
+      }
     });
 
-    test("Create DID with witness", async () => {
+    test.skipIf(!serverRunning)("Create DID with witness", async () => {
       const domain = WITNESS_SERVER_URL.split('//')[1].replace(':', '%3A');
       initialDID = await createDID({
         domain,
@@ -85,7 +68,7 @@ const runWitnessTests = async () => {
       expect(initialDID.log[0].proof).toHaveLength(2); // Controller proof + witness proof
     });
 
-    test("Update DID with witness", async () => {
+    test.skipIf(!serverRunning)("Update DID with witness", async () => {
       const newAuthKey = await generateEd25519VerificationMethod();
       const updatedDID = await updateDID({
         log: initialDID.log,
@@ -99,7 +82,7 @@ const runWitnessTests = async () => {
       expect(updatedDID.log[updatedDID.log.length - 1].proof).toHaveLength(2); // Controller proof + witness proof
     });
 
-    test("Witness signing with environment variable key", async () => {
+    test.skipIf(!serverRunning)("Witness signing with environment variable key", async () => {
       if (!process.env.WITNESS_PRIVATE_KEY) {
         test.skip("WITNESS_PRIVATE_KEY environment variable not set", () => {});
         return;

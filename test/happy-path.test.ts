@@ -2,10 +2,10 @@ import { test, expect, beforeAll } from "bun:test";
 import { createDID, deactivateDID, resolveDIDFromLog, updateDID } from "../src/method";
 import fs from 'node:fs';
 import { deriveNextKeyHash, readLogFromDisk } from "../src/utils";
-import { createVMID, deriveHash } from "../src/utils";
+import { createVMID } from "../src/utils";
 import { METHOD } from "../src/constants";
 import { createSigner, generateEd25519VerificationMethod, generateX25519VerificationMethod } from "../src/cryptography";
-
+import type { DIDLog, VerificationMethod } from "../src/interfaces";
 let docFile: string, logFile: string;
 let did: string;
 let currentAuthKey: VerificationMethod | null = null;
@@ -155,6 +155,7 @@ test("Update DID (3 keys, 2 services)", async () => {
         }
       ]});
   expect(updatedDID).toBe(did);
+  console.log(updatedDoc);
   expect(updatedDoc.keyAgreement.length).toBe(1)
   expect(updatedDoc.service.length).toBe(2);
   expect(updatedDoc.service[1].id).toBe(`${did}#didcomm`);

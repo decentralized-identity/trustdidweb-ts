@@ -4,14 +4,16 @@ import { join } from 'path';
 import { readLogFromDisk, readLogFromString } from "../src/utils";
 import { $ } from "bun";
 import { resolveDIDFromLog } from "../src/method";
+import { isWitnessServerRunning } from "./utils";
+
+const serverRunning = await isWitnessServerRunning();
 
 describe("CLI End-to-End Tests", () => {
   const TEST_DIR = './test/temp-cli-e2e';
   const TEST_LOG_FILE = join(TEST_DIR, 'did.jsonl');
-  const WITNESS_SERVER_URL = "http://localhost:8000";
   let currentDID: string;
   
-  beforeAll(() => {
+  beforeAll(async () => {
     // Create test directory if it doesn't exist
     if (!fs.existsSync(TEST_DIR)) {
       fs.mkdirSync(TEST_DIR, { recursive: true });
@@ -133,7 +135,7 @@ describe("CLI End-to-End Tests", () => {
     expect(lastEntry.parameters.deactivated).toBe(true);
   });
 
-  test("Create DID with witnesses using CLI", async () => {
+  test.skipIf(!serverRunning)("Create DID with witnesses using CLI", async () => {
     const witnessLogFile = join(TEST_DIR, 'did-witness.jsonl');
     
     try {
