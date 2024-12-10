@@ -1,4 +1,4 @@
-import { clone, collectWitnessProofs, createDate, createDIDDoc, createSCID, deriveHash, fetchLogFromIdentifier, findVerificationMethod, normalizeVMs } from "./utils";
+import { clone, collectWitnessProofs, createDate, createDIDDoc, createSCID, deriveHash, deriveNextKeyHash, fetchLogFromIdentifier, findVerificationMethod, normalizeVMs } from "./utils";
 import { BASE_CONTEXT, METHOD, PLACEHOLDER, PROTOCOL } from './constants';
 import { documentStateIsValid, hashChainValid, newKeysAreInNextKeys, scidIsFromHash } from './assertions';
 import type { CreateDIDInterface, DIDResolutionMeta, DIDLogEntry, DIDLog, UpdateDIDInterface, DeactivateDIDInterface } from './interfaces';
@@ -164,7 +164,8 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
         host = newHost;
       }
 
-      const verified = await documentStateIsValid(resolutionLog[i], meta.updateKeys, meta.witnesses);
+      const keys = parameters.nextKeyHashes?.length > 0 && meta.nextKeyHashes.length > 0 ? parameters.updateKeys : meta.updateKeys;
+      const verified = await documentStateIsValid(resolutionLog[i], keys, meta.witnesses);
       if (!verified) {
         throw new Error(`version ${meta.versionId} failed verification of the proof.`)
       }
@@ -175,12 +176,11 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
 
       await newKeysAreInNextKeys(
         parameters.updateKeys ?? [], 
-        meta.nextKeyHashes ?? [], // Use meta (previous state) for validation
+        meta.nextKeyHashes ?? [],
         meta.prerotation,
         parameters.prerotation === true
       );
 
-      // After all validation passes, update meta state
       if (parameters.updateKeys) {
         meta.updateKeys = parameters.updateKeys;
       }
@@ -235,8 +235,7 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
   if ((meta.prerotation || prerotation === true) && (!nextKeyHashes || nextKeyHashes.length === 0)) {
     throw new Error("nextKeyHashes are required if prerotation enabled");
   }
-
-  await newKeysAreInNextKeys(updateKeys ?? [], nextKeyHashes ?? [], meta.prerotation, prerotation ?? false);
+  await newKeysAreInNextKeys(updateKeys ?? [], meta.nextKeyHashes ?? [], meta.prerotation, prerotation ?? false);
 
   if (domain) {
     if (!meta.portable) {

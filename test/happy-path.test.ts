@@ -283,6 +283,45 @@ test("Resolve DID version 6", async () => {
   await testResolveVersion(6);
 });
 
+test("Update DID (rotate with prerotation)", async () => {
+  let didLog = readLogFromDisk(logFile);
+  const {doc} = await resolveDIDFromLog(didLog);
+
+  const nextAuthKey = await generateEd25519VerificationMethod();
+  const nextNextAuthKey = await generateEd25519VerificationMethod();
+  const nextNextKeyHash = await deriveNextKeyHash(nextNextAuthKey.publicKeyMultibase!);
+  const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
+    await updateDID({
+      log: didLog,
+      signer: createSigner(nextAuthKey!),
+      updateKeys: [
+        nextAuthKey.publicKeyMultibase!
+      ],
+      prerotation: true,
+      nextKeyHashes: [nextNextKeyHash],
+      context: doc['@context'],
+      verificationMethods: [
+        nextAuthKey
+      ],
+      services: doc.service,
+      alsoKnownAs: ['did:web:example.com']
+    });
+    didLog = [...updatedLog];
+    expect(updatedDID).toBe(did);
+    expect(updatedDoc.controller).toContain(did)
+    expect(meta.prerotation).toBe(true);
+    expect(meta.nextKeyHashes).toContain(nextNextKeyHash);
+
+    expect(meta.versionId.split('-')[0]).toBe("7");
+    
+    writeFilesToDisk(updatedLog, updatedDoc, 7);
+    currentAuthKey = nextAuthKey;
+});
+
+test("Resolve DID version 7", async () => {
+  await testResolveVersion(7);
+});
+
 // ADD ANY NEW TESTS HERE AND BUMP VERSION NUMBER AT END OF FILE
 
 test("Deactivate DID", async () => {
@@ -301,11 +340,11 @@ test("Deactivate DID", async () => {
     expect(updatedDoc.verificationMethod.length).toBe(0);
     expect(meta.deactivated).toBe(true);
 
-    expect(meta.versionId.split('-')[0]).toBe("7");
+    expect(meta.versionId.split('-')[0]).toBe("8");
     
-    writeFilesToDisk(updatedLog, updatedDoc, 7);
+    writeFilesToDisk(updatedLog, updatedDoc, 8);
 });
 
-test("Resolve DID version 7", async () => {
-  await testResolveVersion(7);
+test("Resolve DID version 8", async () => {
+  await testResolveVersion(8);
 });
