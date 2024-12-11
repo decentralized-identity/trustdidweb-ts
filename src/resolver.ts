@@ -1,6 +1,7 @@
 import { Elysia } from 'elysia'
 import { getLatestDIDDoc, getLogFileForBase, getLogFileForSCID } from './routes/did';
 import { createWitnessProof } from './witness';
+import { config } from './config';
 
 const app = new Elysia()
   .get('/health', 'ok')
@@ -30,10 +31,10 @@ const app = new Elysia()
       .get('/', ({params}) => getLatestDIDDoc({params}))
     })
 
-const port = process.env.PORT || 8000;
+const port = config.getEnvValue('PORT') || 8000;
 
-// Parse the DID_VERIFICATION_METHODS environment variable
-const verificationMethods = JSON.parse(Buffer.from(process.env.DID_VERIFICATION_METHODS || 'W10=', 'base64').toString('utf8'));
+// Get verification methods using the config helper
+const verificationMethods = config.getVerificationMethods();
 
 // Function to get all active DIDs from verification methods
 async function getActiveDIDs(): Promise<string[]> {

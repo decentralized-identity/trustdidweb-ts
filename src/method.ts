@@ -1,7 +1,7 @@
 import { clone, collectWitnessProofs, createDate, createDIDDoc, createSCID, deriveHash, fetchLogFromIdentifier, findVerificationMethod, normalizeVMs } from "./utils";
 import { BASE_CONTEXT, METHOD, PLACEHOLDER, PROTOCOL } from './constants';
 import { documentStateIsValid, hashChainValid, newKeysAreInNextKeys, scidIsFromHash } from './assertions';
-
+import type { CreateDIDInterface, DIDResolutionMeta, DIDLogEntry, DIDLog, UpdateDIDInterface, DeactivateDIDInterface } from './interfaces';
 
 export const createDID = async (options: CreateDIDInterface): Promise<{did: string, doc: any, meta: DIDResolutionMeta, log: DIDLog}> => {
   if (!options.updateKeys) {
