@@ -155,7 +155,6 @@ test("Update DID (3 keys, 2 services)", async () => {
         }
       ]});
   expect(updatedDID).toBe(did);
-  console.log(updatedDoc);
   expect(updatedDoc.keyAgreement.length).toBe(1)
   expect(updatedDoc.service.length).toBe(2);
   expect(updatedDoc.service[1].id).toBe(`${did}#didcomm`);
@@ -249,41 +248,69 @@ test("Update DID (enable prerotation)", async () => {
   const {doc} = await resolveDIDFromLog(didLog);
 
   const nextAuthKey = await generateEd25519VerificationMethod();
-  const nextNextAuthKey = await generateEd25519VerificationMethod();
-  const nextNextKeyHash = await deriveNextKeyHash(nextNextAuthKey.publicKeyMultibase!);
+  const nextKeyHash = await deriveNextKeyHash(nextAuthKey.publicKeyMultibase!);
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await updateDID({
       log: didLog,
       signer: createSigner(currentAuthKey!),
-      updateKeys: [
-        nextAuthKey.publicKeyMultibase!
-      ],
-      prerotation: true,
-      nextKeyHashes: [nextNextKeyHash],
+      updateKeys: [nextAuthKey.publicKeyMultibase!],
+      nextKeyHashes: [nextKeyHash],
       context: doc['@context'],
-      verificationMethods: [
-        nextAuthKey
-      ],
+      verificationMethods: [nextAuthKey],
       services: doc.service,
       alsoKnownAs: ['did:web:example.com']
     });
-    didLog = [...updatedLog];
-    expect(updatedDID).toBe(did);
-    expect(updatedDoc.controller).toContain(did)
-    expect(meta.prerotation).toBe(true);
-    expect(meta.nextKeyHashes).toContain(nextNextKeyHash);
-
-    expect(meta.versionId.split('-')[0]).toBe("6");
-    
-    writeFilesToDisk(updatedLog, updatedDoc, 6);
-    currentAuthKey = nextAuthKey;
+  
+  didLog = [...updatedLog];
+  expect(updatedDID).toBe(did);
+  expect(updatedDoc.controller).toContain(did);
+  expect(meta.nextKeyHashes).toContain(nextKeyHash);
+  expect(meta.prerotation).toBe(true);
+  expect(meta.versionId.split('-')[0]).toBe("6");
+  
+  writeFilesToDisk(updatedLog, updatedDoc, 6);
+  currentAuthKey = nextAuthKey;
 });
 
 test("Resolve DID version 6", async () => {
   await testResolveVersion(6);
 });
 
-// ADD ANY NEW TESTS HERE AND BUMP VERSION NUMBER AT END OF FILE
+test("Update DID (rotate with prerotation)", async () => {
+  let didLog = readLogFromDisk(logFile);
+  const {doc} = await resolveDIDFromLog(didLog);
+
+  const nextAuthKey = await generateEd25519VerificationMethod();
+  const nextKeyHash = await deriveNextKeyHash(nextAuthKey.publicKeyMultibase!);
+  
+  expect(doc.verificationMethod[0].publicKeyMultibase).toBe(currentAuthKey!.publicKeyMultibase);
+  
+  const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
+    await updateDID({
+      log: didLog,
+      signer: createSigner(currentAuthKey!),
+      updateKeys: [currentAuthKey!.publicKeyMultibase!],
+      nextKeyHashes: [nextKeyHash],
+      context: doc['@context'],
+      verificationMethods: [nextAuthKey],
+      services: doc.service,
+      alsoKnownAs: ['did:web:example.com']
+    });
+  
+  didLog = [...updatedLog];
+  expect(updatedDID).toBe(did);
+  expect(updatedDoc.controller).toContain(did);
+  expect(meta.nextKeyHashes).toContain(nextKeyHash);
+  expect(meta.prerotation).toBe(true);
+  expect(meta.versionId.split('-')[0]).toBe("7");
+  
+  writeFilesToDisk(updatedLog, updatedDoc, 7);
+  currentAuthKey = nextAuthKey;
+});
+
+test("Resolve DID version 7", async () => {
+  await testResolveVersion(7);
+});
 
 test("Deactivate DID", async () => {
   let didLog = readLogFromDisk(logFile);
@@ -291,21 +318,48 @@ test("Deactivate DID", async () => {
   const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
     await deactivateDID({
       log: didLog,
-      signer: createSigner(currentAuthKey!)
+      signer: createSigner(currentAuthKey!),
+      updateKeys: [currentAuthKey!.publicKeyMultibase!],
     });
-    didLog = [...updatedLog];
-    expect(updatedDID).toBe(did);
-    expect(updatedDoc.controller).toEqual(expect.arrayContaining(doc.controller));
-    expect(updatedDoc.controller.length).toEqual(doc.controller.length);
-    expect(updatedDoc.authentication.length).toBe(0);
-    expect(updatedDoc.verificationMethod.length).toBe(0);
-    expect(meta.deactivated).toBe(true);
-
-    expect(meta.versionId.split('-')[0]).toBe("7");
-    
-    writeFilesToDisk(updatedLog, updatedDoc, 7);
+  
+  didLog = [...updatedLog];
+  expect(updatedDID).toBe(did);
+  expect(updatedDoc.controller).toEqual(expect.arrayContaining(doc.controller));
+  expect(updatedDoc.controller.length).toEqual(doc.controller.length);
+  expect(updatedDoc.authentication?.length ?? 0).toBe(0);
+  expect(updatedDoc.verificationMethod?.length ?? 0).toBe(0);
+  expect(meta.deactivated).toBe(true);
+  expect(meta.versionId.split('-')[0]).toBe("8");
+  
+  writeFilesToDisk(updatedLog, updatedDoc, 8);
 });
 
-test("Resolve DID version 7", async () => {
-  await testResolveVersion(7);
+test("Resolve DID version 8", async () => {
+  await testResolveVersion(8);
+});
+
+test("Update DID with key rotation", async () => {
+  let didLog = readLogFromDisk(logFile);
+  const {doc} = await resolveDIDFromLog(didLog);
+  const nextAuthKey = await generateEd25519VerificationMethod();
+  const futureAuthKey = await generateEd25519VerificationMethod();
+  const nextKeyHash = await deriveNextKeyHash(futureAuthKey.publicKeyMultibase!);
+  
+  const {did: updatedDID, doc: updatedDoc, meta, log: updatedLog} =
+    await updateDID({
+      log: didLog,
+      signer: createSigner(currentAuthKey!),
+      updateKeys: [nextAuthKey.publicKeyMultibase!],
+      nextKeyHashes: [nextKeyHash],
+      verificationMethods: [nextAuthKey],
+      services: doc.service
+    });
+
+  didLog = [...updatedLog];
+  expect(updatedDID).toBe(did);
+  expect(meta.nextKeyHashes).toContain(nextKeyHash);
+  expect(meta.prerotation).toBe(true);
+
+  writeFilesToDisk(updatedLog, updatedDoc, 5);
+  currentAuthKey = nextAuthKey;
 });

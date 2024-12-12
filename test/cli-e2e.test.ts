@@ -5,6 +5,9 @@ import { readLogFromDisk, readLogFromString } from "../src/utils";
 import { $ } from "bun";
 import { resolveDIDFromLog } from "../src/method";
 import { isWitnessServerRunning } from "./utils";
+import { generateEd25519VerificationMethod } from "../src/cryptography";
+import { deriveNextKeyHash } from "../src/utils";
+import {  } from "../src/cli";
 
 const serverRunning = await isWitnessServerRunning();
 
@@ -179,11 +182,11 @@ describe("CLI End-to-End Tests", () => {
   test("Create DID with prerotation", async () => {
     const prerotationLogFile = join(TEST_DIR, 'did-prerotation.jsonl');
     
-    // First create a DID with prerotation and next key hashes
+    // First create a DID with nextKeyHashes
     const nextKeyHash1 = "z6MkgYGF3thn8k1Qz9P4c3mKthZXNhUgkdwBwE5hbWFJktGH";
     const nextKeyHash2 = "z6MkrCD1Qr8TQ4SQNzpkwx8qRLFQkUg7oKc8rjhYoV6DpHXx";
     
-    const createProc = await $`bun run cli create --domain example.com --output ${prerotationLogFile} --portable --prerotation --next-key-hash ${nextKeyHash1} --next-key-hash ${nextKeyHash2}`.quiet();
+    const createProc = await $`bun run cli create --domain example.com --output ${prerotationLogFile} --portable --next-key-hash ${nextKeyHash1} --next-key-hash ${nextKeyHash2}`.quiet();
     expect(createProc.exitCode).toBe(0);
     
     // Wait a moment for the .env file to be written
@@ -194,21 +197,7 @@ describe("CLI End-to-End Tests", () => {
     const { did, meta } = await resolveDIDFromLog(currentLog);
     const authorizedKey = meta.updateKeys[0];
     
-    // Read and parse the VM from env
-    const envContent = fs.readFileSync('.env', 'utf8');
-    const vmMatch = envContent.match(/DID_VERIFICATION_METHODS=(.+)/);
-    if (!vmMatch) {
-      throw new Error('No verification method found in .env file');
-    }
-
-    // Parse and update the VM with the current authorized key and controller
-    const vm = JSON.parse(Buffer.from(vmMatch[1], 'base64').toString('utf8'))[0];
-    vm.publicKeyMultibase = authorizedKey;
-    vm.controller = did;
-    process.env.DID_VERIFICATION_METHODS = Buffer.from(JSON.stringify([vm])).toString('base64');
-    
-    // Verify prerotation setup
-    expect(currentLog[0].parameters.prerotation).toBe(true);
+    // Verify nextKeyHashes setup
     expect(currentLog[0].parameters.nextKeyHashes).toHaveLength(2);
     expect(currentLog[0].parameters.nextKeyHashes).toContain(nextKeyHash1);
     expect(currentLog[0].parameters.nextKeyHashes).toContain(nextKeyHash2);
@@ -321,5 +310,26 @@ describe("CLI End-to-End Tests", () => {
     expect(output).toContain('Resolved DID');
     expect(output).toContain('DID Document');
     expect(output).toContain('Metadata');
+  });
+
+  test("Create DID with key rotation", async () => {
+    const rotationLogFile = join(TEST_DIR, 'did-rotation.jsonl');
+    
+    // Setup next key hashes
+    const nextKeyHash1 = "z6MkgYGF3thn8k1Qz9P4c3mKthZXNhUgkdwBwE5hbWFJktGH";
+    const nextKeyHash2 = "z6MkrCD1Qr8TQ4SQNzpkwx8qRLFQkUg7oKc8rjhYoV6DpHXx";
+    
+    // Create DID with nextKeyHashes
+    const createProc = await $`bun run cli create --domain example.com --output ${rotationLogFile} --next-key-hash ${nextKeyHash1} --next-key-hash ${nextKeyHash2}`.quiet();
+    expect(createProc.exitCode).toBe(0);
+    
+    // Verify the log file was created
+    expect(fs.existsSync(rotationLogFile)).toBe(true);
+    
+    // Read and verify the log content
+    const currentLog = readLogFromDisk(rotationLogFile);
+    expect(currentLog[0].parameters.nextKeyHashes).toHaveLength(2);
+    expect(currentLog[0].parameters.nextKeyHashes).toContain(nextKeyHash1);
+    expect(currentLog[0].parameters.nextKeyHashes).toContain(nextKeyHash2);
   });
 }); 

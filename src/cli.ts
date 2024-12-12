@@ -24,7 +24,6 @@ Options:
   --log [file]              Path to the DID log file (required for resolve, update, deactivate)
   --output [file]           Path to save the updated DID log (optional for create, update, deactivate)
   --portable                Make the DID portable (optional for create)
-  --prerotation             Enable pre-rotation (optional for create and update)
   --witness [witness]       Add a witness (can be used multiple times)
   --witness-threshold [n]   Set witness threshold (optional, defaults to number of witnesses)
   --service [service]       Add a service (format: type,endpoint) (can be used multiple times)
@@ -50,18 +49,12 @@ export async function handleCreate(args: string[]) {
   const domain = options['domain'] as string;
   const output = options['output'] as string | undefined;
   const portable = options['portable'] !== undefined;
-  const prerotation = options['prerotation'] !== undefined;
+  const nextKeyHashes = options['next-key-hash'] as string[] | undefined;
   const witnesses = options['witness'] as string[] | undefined;
   const witnessThreshold = options['witness-threshold'] ? parseInt(options['witness-threshold'] as string) : witnesses?.length ?? 0;
-  const nextKeyHashes = options['next-key-hash'] as string[] | undefined;
 
   if (!domain) {
     console.error('Domain is required for create command');
-    process.exit(1);
-  }
-
-  if (prerotation && !nextKeyHashes) {
-    console.error('next-key-hash is required when prerotation is enabled');
     process.exit(1);
   }
 
@@ -74,7 +67,6 @@ export async function handleCreate(args: string[]) {
       updateKeys: [authKey.publicKeyMultibase!],
       verificationMethods: [authKey],
       portable,
-      prerotation,
       witnesses,
       witnessThreshold,
       nextKeyHashes,
@@ -153,7 +145,6 @@ export async function handleUpdate(args: string[]) {
   const options = parseOptions(args);
   const logFile = options['log'] as string;
   const output = options['output'] as string | undefined;
-  const prerotation = options['prerotation'] !== undefined;
   const witnesses = options['witness'] as string[] | undefined;
   const witnessThreshold = options['witness-threshold'] ? parseInt(options['witness-threshold'] as string) : undefined;
   const services = options['service'] ? parseServices(options['service'] as string[]) : undefined;
@@ -229,7 +220,6 @@ export async function handleUpdate(args: string[]) {
       signer: createSigner(authKey),
       updateKeys: [authKey.publicKeyMultibase!],
       verificationMethods,
-      prerotation,
       witnesses,
       witnessThreshold,
       services,
