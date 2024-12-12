@@ -7,9 +7,7 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
   if (!options.updateKeys) {
     throw new Error('Update keys not supplied')
   }
-  if (options.prerotation && !options.nextKeyHashes) {
-    throw new Error('nextKeyHashes are required if prerotation enabled');
-  }
+  
   const controller = `did:${METHOD}:${PLACEHOLDER}:${options.domain}`;
   const createdDate = createDate(options.created);
   let {doc} = await createDIDDoc({...options, controller});
@@ -17,7 +15,7 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
     scid: PLACEHOLDER,
     updateKeys: options.updateKeys,
     portable: options.portable ?? false,
-    ...(options.prerotation ? {prerotation: true, nextKeyHashes: options.nextKeyHashes ?? []} : {prerotation: false, nextKeyHashes: []}),
+    nextKeyHashes: options.nextKeyHashes ?? [],
     ...(options.witnesses ? {
       witnesses: options.witnesses,
       witnessThreshold: options.witnessThreshold || options.witnesses.length
@@ -60,6 +58,7 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
       versionId: prelimEntry.versionId,
       created: prelimEntry.versionTime,
       updated: prelimEntry.versionTime,
+      prerotation: (params.nextKeyHashes?.length ?? 0) > 0,
       ...params
     },
     log: [
@@ -130,10 +129,10 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
       meta.scid = parameters.scid;
       meta.portable = parameters.portable ?? meta.portable;
       meta.updateKeys = parameters.updateKeys;
-      meta.prerotation = parameters.prerotation === true;
+      meta.nextKeyHashes = parameters.nextKeyHashes || [];
+      meta.prerotation = meta.nextKeyHashes.length > 0;
       meta.witnesses = parameters.witnesses || meta.witnesses;
       meta.witnessThreshold = parameters.witnessThreshold || meta.witnessThreshold || meta.witnesses.length;
-      meta.nextKeyHashes = parameters.nextKeyHashes ?? [];
       const logEntry = {
         versionId: PLACEHOLDER,
         versionTime: meta.created,
@@ -153,10 +152,6 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
       }
     } else {
       // version number > 1
-      if (parameters.prerotation === true && (!parameters.nextKeyHashes || parameters.nextKeyHashes.length === 0)) {
-        throw new Error("prerotation enabled without nextKeyHashes");
-      }
-
       const newHost = newDoc.id.split(':').at(-1);
       if (!meta.portable && newHost !== host) {
         throw new Error("Cannot move DID: portability is disabled");
@@ -164,7 +159,7 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
         host = newHost;
       }
 
-      const keys = parameters.nextKeyHashes?.length > 0 && meta.nextKeyHashes.length > 0 ? parameters.updateKeys : meta.updateKeys;
+      const keys = meta.prerotation ? parameters.updateKeys : meta.updateKeys;
       const verified = await documentStateIsValid(resolutionLog[i], keys, meta.witnesses);
       if (!verified) {
         throw new Error(`version ${meta.versionId} failed verification of the proof.`)
@@ -174,12 +169,12 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
         throw new Error(`Hash chain broken at '${meta.versionId}'`);
       }
 
-      await newKeysAreInNextKeys(
-        parameters.updateKeys ?? [], 
-        meta.nextKeyHashes ?? [],
-        meta.prerotation,
-        parameters.prerotation === true
-      );
+      if (meta.prerotation) {
+        await newKeysAreInNextKeys(
+          parameters.updateKeys ?? [], 
+          meta.nextKeyHashes ?? []
+        );
+      }
 
       if (parameters.updateKeys) {
         meta.updateKeys = parameters.updateKeys;
@@ -187,11 +182,12 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
       if (parameters.deactivated === true) {
         meta.deactivated = true;
       }
-      if (parameters.prerotation === true) {
-        meta.prerotation = true;
-        meta.nextKeyHashes = parameters.nextKeyHashes || [];
-      } else if (parameters.nextKeyHashes) {
+      if (parameters.nextKeyHashes) {
         meta.nextKeyHashes = parameters.nextKeyHashes;
+        meta.prerotation = true;
+      } else {
+        meta.nextKeyHashes = [];
+        meta.prerotation = false;
       }
       if (parameters.witnesses) {
         meta.witnesses = parameters.witnesses;
@@ -227,15 +223,15 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
 export const updateDID = async (options: UpdateDIDInterface): Promise<{did: string, doc: any, meta: DIDResolutionMeta, log: DIDLog}> => {
   const {
     log, updateKeys, context, verificationMethods, services, alsoKnownAs,
-    controller, domain, nextKeyHashes, prerotation, witnesses, witnessThreshold
+    controller, domain, nextKeyHashes, witnesses, witnessThreshold
   } = options;
   let {did, doc, meta} = await resolveDIDFromLog(log);
 
-  // Check for required nextKeyHashes for prerotation
-  if ((meta.prerotation || prerotation === true) && (!nextKeyHashes || nextKeyHashes.length === 0)) {
-    throw new Error("nextKeyHashes are required if prerotation enabled");
+  // Check for required nextKeyHashes if prerotation is enabled
+  if (meta.nextKeyHashes.length > 0 && (!nextKeyHashes || nextKeyHashes.length === 0)) {
+    throw new Error("nextKeyHashes are required if prerotation was previously enabled");
   }
-  await newKeysAreInNextKeys(updateKeys ?? [], meta.nextKeyHashes ?? [], meta.prerotation, prerotation ?? false);
+  await newKeysAreInNextKeys(updateKeys ?? [], meta.nextKeyHashes);
 
   if (domain) {
     if (!meta.portable) {
@@ -254,12 +250,9 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
   }
   const params = {
     ...(updateKeys ? {updateKeys} : {}),
-    ...(prerotation === true ? {
-      prerotation: true,
-      nextKeyHashes: nextKeyHashes || []
-    } : (nextKeyHashes ? {
+    ...(nextKeyHashes ? {
       nextKeyHashes
-    } : {})),
+    } : {}),
     ...(witnesses || meta.witnesses ? {
       witnesses: witnesses || meta.witnesses,
       witnessThreshold: witnesses ? witnessThreshold || witnesses.length : meta.witnessThreshold
@@ -284,6 +277,7 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
     created: meta.created,
     updated: meta.updated,
     previousLogEntryHash: meta.previousLogEntryHash,
+    prerotation: (nextKeyHashes?.length ?? 0) > 0,
     ...params
   };
 
@@ -322,7 +316,7 @@ export const deactivateDID = async (options: DeactivateDIDInterface): Promise<{d
   const logEntry: DIDLogEntry = {
     versionId: meta.versionId,
     versionTime: meta.updated,
-    parameters: {deactivated: true},
+    parameters: {updateKeys: options.updateKeys ?? [], nextKeyHashes: [], deactivated: true},
     state: clone(newDoc)
   };
   const logEntryHash = await deriveHash(logEntry);

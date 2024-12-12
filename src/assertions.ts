@@ -5,7 +5,6 @@ import { canonicalize } from 'json-canonicalize';
 import { createHash } from './utils/crypto';
 import { config } from './config';
 import { bufferToString, concatBuffers } from './utils/buffer';
-import { createBuffer } from './utils/buffer';
 
 const isKeyAuthorized = (verificationMethod: string, updateKeys: string[]): boolean => {
   if (config.getEnvValue('IGNORE_ASSERTION_KEY_IS_AUTHORIZED') === 'true') return true;
@@ -99,14 +98,14 @@ export const hashChainValid = (derivedHash: string, logEntryHash: string) => {
   return derivedHash === logEntryHash;
 }
 
-export const newKeysAreInNextKeys = async (updateKeys: string[], nextKeyHashes: string[], previousPrerotation: boolean, prerotation: boolean) => {
+export const newKeysAreInNextKeys = async (updateKeys: string[], previousNextKeyHashes: string[]) => {
   if (config.getEnvValue('IGNORE_ASSERTION_NEW_KEYS_ARE_VALID') === 'true') return true;
 
-  if (previousPrerotation && !prerotation) {
+  if (previousNextKeyHashes.length > 0) {
     for (const key of updateKeys) {
       const keyHash = await deriveNextKeyHash(key);
-      if (!nextKeyHashes.includes(keyHash)) {
-        throw new Error(`Invalid update key ${keyHash}. Not found in nextKeyHashes ${nextKeyHashes}`);
+      if (!previousNextKeyHashes.includes(keyHash)) {
+        throw new Error(`Invalid update key ${keyHash}. Not found in nextKeyHashes ${previousNextKeyHashes}`);
       }
     }
   }

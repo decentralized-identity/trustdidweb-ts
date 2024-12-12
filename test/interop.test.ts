@@ -7,6 +7,7 @@ describe("did:tdw interoperability tests", async () => {
     const {did: resolvedDID, meta} = await resolveDID(did);
     expect(resolvedDID).toBe(did);
     expect(meta.versionId).toBe("3-QmYKJo2xvahkwKFKzEybDMzSWGYcPVsX2eGYZTYqY678iK");
+    expect(meta.nextKeyHashes.length).toBeGreaterThan(0);
     expect(meta.prerotation).toBe(true);
     expect(meta.portable).toBe(false);
   })
