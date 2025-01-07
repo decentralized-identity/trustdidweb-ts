@@ -44,7 +44,6 @@ export interface DIDLogEntry {
     method?: string;
     scid?: string;
     updateKeys?: string[];
-    prerotation?: boolean;
     nextKeyHashes?: string[];
     portable?: boolean;
     witnesses?: string[];
@@ -82,7 +81,6 @@ export interface CreateDIDInterface {
   context?: string | string[];
   verificationMethods?: VerificationMethod[];
   created?: Date;
-  prerotation?: boolean;
   nextKeyHashes?: string[];
   portable?: boolean;
   witnesses?: string[];
@@ -107,7 +105,6 @@ export interface UpdateDIDInterface {
   domain?: string;
   updated?: Date | string;
   deactivated?: boolean;
-  prerotation?: boolean;
   nextKeyHashes?: string[];
   witnesses?: string[];
   witnessThreshold?: number;
@@ -116,4 +113,5 @@ export interface UpdateDIDInterface {
 export interface DeactivateDIDInterface {
   log: DIDLog;
   signer: (doc: any) => Promise<{proof: any}>;
+  updateKeys?: string[];
 }

@@ -105,10 +105,9 @@ bun run cli create \
 - `--domain`: (Required) Host domain for the DID
 - `--output`: Save location for DID log
 - `--portable`: Enable domain portability
-- `--prerotation`: Enable key pre-rotation security
 - `--witness`: Add witness DIDs (repeatable)
 - `--witness-threshold`: Set minimum witness count
-- `--next-key-hash`: Add pre-rotation key hashes (required with --prerotation)
+- `--next-key-hash`: Add pre-rotation key hashes
 
 #### 2. Resolve a DID
 View the current state of a DID:
@@ -144,7 +143,6 @@ bun run cli update \
   - capabilityDelegation
 - `--service`: Add services (format: type,endpoint)
 - `--also-known-as`: Add alternative identifiers
-- `--prerotation`: Enable/update key pre-rotation
 - `--witness`: Update witness list
 - `--witness-threshold`: Update witness requirements
 
