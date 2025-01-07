@@ -1,0 +1,19 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1",
+    "https://w3id.org/security/multikey/v1"
+  ],
+  "id": "did:web:localhost:8000",
+  "controller": "did:web:localhost:8000",
+  "assertionMethod": [
+    "did:web:localhost:8000#wan84S6d"
+  ],
+  "verificationMethod": [
+    {
+      "id": "did:web:localhost:8000#wan84S6d",
+      "controller": "did:web:localhost:8000",
+      "type": "Multikey",
+      "publicKeyMultibase": "z6Mko6MVej9im1KU9mNb4QDttycfjDm9nQgKWRkDwan84S6d"
+    }
+  ]
+}

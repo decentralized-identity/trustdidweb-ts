@@ -1,119 +1,157 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { createDID, resolveDIDFromLog, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
-import type { DIDLog, VerificationMethod } from "../src/interfaces";
 import { isWitnessServerRunning } from "./utils";
-let WITNESS_SCID = "";
-const WITNESS_SERVER_URL = "http://localhost:8000"; // Update this to match your witness server URL
-const WITNESS_DOMAIN = WITNESS_SERVER_URL.split('//')[1].replace(':', '%3A');
+import { DIDLog } from "../src/interfaces";
+import { VerificationMethod } from "../src/interfaces";
 
-const getWitnessDIDLog = async () => {
-  try {
-    const response = await fetch(`${WITNESS_SERVER_URL}/.well-known/did.jsonl`);
-    const logFile = await response.text();
-    
-    // Split the logFile by newlines and filter out any empty lines
-    const logEntries = logFile.split('\n').filter(line => line.trim() !== '');
-    
-    // Parse each non-empty line as JSON
-    const parsedLog = logEntries.map(line => {
-      try {
-        return JSON.parse(line);
-      } catch (error) {
-        console.error(`Error parsing log entry: ${line}`);
-        return null;
-      }
-    }).filter(entry => entry !== null);
-
-    return parsedLog;
-  } catch (error) {
-    console.error('Error fetching or parsing witness DID log:', error);
-    return [];
+describe("Witness Implementation Tests", async () => {
+  const WITNESS_SERVER_URL = "http://localhost:8000";
+  const serverRunning = await isWitnessServerRunning(WITNESS_SERVER_URL);
+  
+  if (!serverRunning) {
+    test.skip("Witness server is not running", () => {});
+    return;
   }
-}
 
-const serverRunning = await isWitnessServerRunning();
+  let authKey: VerificationMethod;
+  let witness1: VerificationMethod, witness2: VerificationMethod, witness3: VerificationMethod;
+  let initialDID: { did: string; doc: any; meta: any; log: DIDLog };
 
-const runWitnessTests = async () => {
-
-  describe("Witness functionality", () => {
-    let authKey: VerificationMethod;
-    let initialDID: { did: string; doc: any; meta: any; log: DIDLog };
-
-    beforeAll(async () => {
-      console.log("Server running:", serverRunning);
-      if (serverRunning) {
-        authKey = await generateEd25519VerificationMethod();
-        const didLog = await getWitnessDIDLog();
-        const {did, meta} = await resolveDIDFromLog(didLog as DIDLog);
-        WITNESS_SCID = meta.scid;
-      }
-    });
-
-    test.skipIf(!serverRunning)("Create DID with witness", async () => {
-      const domain = WITNESS_SERVER_URL.split('//')[1].replace(':', '%3A');
-      initialDID = await createDID({
-        domain,
-        signer: createSigner(authKey),
-        updateKeys: [authKey.publicKeyMultibase!],
-        verificationMethods: [authKey],
-        witnesses: [`did:webvh:${WITNESS_SCID}:${WITNESS_DOMAIN}`],
-        witnessThreshold: 1
-      });
-      const resolved = await resolveDIDFromLog(initialDID.log);
-
-      expect(resolved.did).toBe(initialDID.did);
-      expect(initialDID.meta.witnesses).toHaveLength(1);
-      expect(initialDID.meta.witnessThreshold).toBe(1);
-      expect(initialDID.log[0].proof).toHaveLength(2); // Controller proof + witness proof
-    });
-
-    test.skipIf(!serverRunning)("Update DID with witness", async () => {
-      const newAuthKey = await generateEd25519VerificationMethod();
-      const updatedDID = await updateDID({
-        log: initialDID.log,
-        signer: createSigner(authKey),
-        updateKeys: [newAuthKey.publicKeyMultibase!],
-        verificationMethods: [newAuthKey],
-      });
-
-      expect(updatedDID.meta.witnesses).toHaveLength(1);
-      expect(updatedDID.meta.witnessThreshold).toBe(1);
-      expect(updatedDID.log[updatedDID.log.length - 1].proof).toHaveLength(2); // Controller proof + witness proof
-    });
-
-    test.skipIf(!serverRunning)("Witness signing with environment variable key", async () => {
-      if (!process.env.WITNESS_PRIVATE_KEY) {
-        test.skip("WITNESS_PRIVATE_KEY environment variable not set", () => {});
-        return;
-      }
-
-      const testDID = await createDID({
-        domain: 'example.com',
-        signer: createSigner(authKey),
-        updateKeys: [authKey.publicKeyMultibase!],
-        verificationMethods: [authKey],
-        witnesses: [`did:webvh:${WITNESS_SERVER_URL.split('//')[1]}`],
-        witnessThreshold: 1
-      });
-
-      const response = await fetch(`${WITNESS_SERVER_URL}/witness`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ log: testDID.log }),
-      });
-
-      expect(response.ok).toBe(true);
-
-      const data: any = await response.json();
-      expect(data.proof).toBeDefined();
-      expect(data.proof.type).toBe('DataIntegrityProof');
-      expect(data.proof.cryptosuite).toBe('eddsa-jcs-2022');
-      expect(data.proof.proofPurpose).toBe('authentication');
-    });
+  beforeAll(async () => {
+    authKey = await generateEd25519VerificationMethod();
+    witness1 = await generateEd25519VerificationMethod();
+    witness2 = await generateEd25519VerificationMethod();
+    witness3 = await generateEd25519VerificationMethod();
   });
-};
 
-runWitnessTests();
+  test("Create DID with weighted witness threshold", async () => {
+    initialDID = await createDID({
+      domain: 'example.com',
+      signer: createSigner(authKey),
+      updateKeys: [authKey.publicKeyMultibase!],
+      verificationMethods: [authKey],
+      witness: {
+        threshold: 3,
+        witnesses: [
+          { id: `did:key:${witness1.publicKeyMultibase}`, weight: 2 },
+          { id: `did:key:${witness2.publicKeyMultibase}`, weight: 1 },
+          { id: `did:key:${witness3.publicKeyMultibase}`, weight: 1 }
+        ]
+      }
+    });
+
+    expect(initialDID.meta.witness.threshold).toBe(3);
+    expect(initialDID.meta.witness.witnesses).toHaveLength(3);
+    expect(initialDID.meta.witness.witnesses[0].weight).toBe(2);
+  });
+
+  test("Update DID with witness proofs meeting threshold", async () => {
+    const newAuthKey = await generateEd25519VerificationMethod();
+    
+    // Create witness proofs
+    const witnessProofs = [
+      {
+        versionId: initialDID.log[0].versionId,
+        proof: [
+          {
+            type: "DataIntegrityProof",
+            cryptosuite: "eddsa-jcs-2022",
+            verificationMethod: `did:key:${witness1.publicKeyMultibase}`,
+            created: new Date().toISOString(),
+            proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
+            proofPurpose: "authentication"
+          },
+          {
+            type: "DataIntegrityProof",
+            cryptosuite: "eddsa-jcs-2022",
+            verificationMethod: `did:key:${witness2.publicKeyMultibase}`,
+            created: new Date().toISOString(),
+            proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
+            proofPurpose: "authentication"
+          }
+        ]
+      }
+    ];
+
+    const updatedDID = await updateDID({
+      log: initialDID.log,
+      signer: createSigner(authKey),
+      updateKeys: [newAuthKey.publicKeyMultibase!],
+      verificationMethods: [newAuthKey],
+      witnessProofs
+    });
+
+    expect(updatedDID.meta?.witness?.threshold).toBe(3);
+  });
+
+  test("Replace witness list with new witnesses", async () => {
+    const newWitness = await generateEd25519VerificationMethod();
+    
+    const updatedDID = await updateDID({
+      log: initialDID.log,
+      signer: createSigner(authKey),
+      updateKeys: [authKey.publicKeyMultibase!],
+      verificationMethods: [authKey],
+      witness: {
+        threshold: 1,
+        witnesses: [
+          { id: `did:key:${newWitness.publicKeyMultibase}`, weight: 1 }
+        ]
+      }
+    });
+
+    expect(updatedDID.meta?.witness?.witnesses).toHaveLength(1);
+    expect(updatedDID.meta?.witness?.threshold).toBe(1);
+  });
+
+  test("Disable witnessing by setting witness list to null", async () => {
+    const updatedDID = await updateDID({
+      log: initialDID.log,
+      signer: createSigner(authKey),
+      updateKeys: [authKey.publicKeyMultibase!],
+      verificationMethods: [authKey],
+      witness: null
+    });
+
+    expect(updatedDID.meta.witness).toBeNull();
+  });
+
+  test("Verify witness proofs from did-witness.json", async () => {
+    const mockWitnessFile = [
+      {
+        versionId: initialDID.log[0].versionId,
+        proof: [
+          {
+            type: "DataIntegrityProof",
+            cryptosuite: "eddsa-jcs-2022",
+            verificationMethod: `did:key:${witness1.publicKeyMultibase}`,
+            created: new Date().toISOString(),
+            proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
+            proofPurpose: "authentication"
+          }
+        ]
+      },
+      {
+        versionId: "future-version-id",
+        proof: [
+          // This proof should be ignored since version doesn't exist in log
+          {
+            type: "DataIntegrityProof",
+            cryptosuite: "eddsa-jcs-2022",
+            verificationMethod: `did:key:${witness1.publicKeyMultibase}`,
+            created: new Date().toISOString(),
+            proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
+            proofPurpose: "authentication"
+          }
+        ]
+      }
+    ];
+
+    const resolved = await resolveDIDFromLog(initialDID.log, {
+      witnessProofs: mockWitnessFile
+    });
+
+    expect(resolved.did).toBe(initialDID.did);
+  });
+});

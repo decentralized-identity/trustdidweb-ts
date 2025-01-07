@@ -1,7 +1,7 @@
 import { clone, collectWitnessProofs, createDate, createDIDDoc, createSCID, deriveHash, deriveNextKeyHash, fetchLogFromIdentifier, findVerificationMethod, getActiveDIDs, getBaseUrl, normalizeVMs } from "./utils";
 import { BASE_CONTEXT, METHOD, PLACEHOLDER, PROTOCOL } from './constants';
 import { documentStateIsValid, hashChainValid, newKeysAreInNextKeys, scidIsFromHash } from './assertions';
-import type { CreateDIDInterface, DIDResolutionMeta, DIDLogEntry, DIDLog, UpdateDIDInterface, DeactivateDIDInterface } from './interfaces';
+import type { CreateDIDInterface, DIDResolutionMeta, DIDLogEntry, DIDLog, UpdateDIDInterface, DeactivateDIDInterface, ResolutionOptions } from './interfaces';
 
 export const createDID = async (options: CreateDIDInterface): Promise<{did: string, doc: any, meta: DIDResolutionMeta, log: DIDLog}> => {
   if (!options.updateKeys) {
@@ -16,13 +16,9 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
     updateKeys: options.updateKeys,
     portable: options.portable ?? false,
     nextKeyHashes: options.nextKeyHashes ?? [],
-    ...(options.witnesses ? {
-      witnesses: options.witnesses,
-      witnessThreshold: options.witnessThreshold || options.witnesses.length
-    } : {
-      witnesses: [],
-      witnessThreshold: 0
-    }),
+    ...(options.witness ? {
+      witness: options.witness
+    } : {}),
     deactivated: false
   };
   const initialLogEntry: DIDLogEntry = {
@@ -44,8 +40,11 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
   let allProofs = [signedDoc.proof];
   prelimEntry.proof = allProofs;
 
-  if (options.witnesses && options.witnesses.length > 0) {
-    const witnessProofs = await collectWitnessProofs(options.witnesses, [prelimEntry]);
+  if (options.witness && options.witness.witnesses && options.witness.witnesses.length > 0) {
+    const witnessProofs = await collectWitnessProofs(
+      options.witness.witnesses.map(w => w.id),
+      [prelimEntry]
+    );
     if (witnessProofs.length > 0) {
       allProofs = [...allProofs, ...witnessProofs];
       prelimEntry.proof = allProofs;
@@ -82,12 +81,7 @@ export const resolveDID = async (did: string, options: {
   return {...(await resolveDIDFromLog(log, options)), controlled};
 }
 
-export const resolveDIDFromLog = async (log: DIDLog, options: {
-  versionNumber?: number, 
-  versionId?: string, 
-  versionTime?: Date,
-  verificationMethod?: string
-} = {}): Promise<{did: string, doc: any, meta: DIDResolutionMeta}> => {
+export const resolveDIDFromLog = async (log: DIDLog, options: ResolutionOptions = {}): Promise<{did: string, doc: any, meta: DIDResolutionMeta}> => {
   if (options.verificationMethod && (options.versionNumber || options.versionId)) {
     throw new Error("Cannot specify both verificationMethod and version number/id");
   }
@@ -109,8 +103,7 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
     nextKeyHashes: [],
     deactivated: false,
     updateKeys: [],
-    witnesses: [],
-    witnessThreshold: 0
+    witness: undefined
   };
   let host = '';
   let i = 0;
@@ -136,8 +129,9 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
       meta.updateKeys = parameters.updateKeys;
       meta.nextKeyHashes = parameters.nextKeyHashes || [];
       meta.prerotation = meta.nextKeyHashes.length > 0;
-      meta.witnesses = parameters.witnesses || meta.witnesses;
-      meta.witnessThreshold = parameters.witnessThreshold || meta.witnessThreshold || meta.witnesses.length;
+      meta.prerotation = parameters.prerotation === true;
+      meta.witness = parameters.witness || meta.witness;
+      meta.nextKeyHashes = parameters.nextKeyHashes ?? [];
       const logEntry = {
         versionId: PLACEHOLDER,
         versionTime: meta.created,
@@ -151,7 +145,7 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
       }
       const prelimEntry = JSON.parse(JSON.stringify(logEntry).replaceAll(PLACEHOLDER, meta.scid));
       const logEntryHash2 = await deriveHash(prelimEntry);
-      const verified = await documentStateIsValid({...prelimEntry, versionId: `1-${logEntryHash2}`, proof}, meta.updateKeys, meta.witnesses);
+      const verified = await documentStateIsValid({...prelimEntry, versionId: `1-${logEntryHash2}`, proof}, meta.updateKeys, meta.witness);
       if (!verified) {
         throw new Error(`version ${meta.versionId} failed verification of the proof.`)
       }
@@ -165,7 +159,7 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
       }
 
       const keys = meta.prerotation ? parameters.updateKeys : meta.updateKeys;
-      const verified = await documentStateIsValid(resolutionLog[i], keys, meta.witnesses);
+      const verified = await documentStateIsValid(resolutionLog[i], keys, meta.witness);
       if (!verified) {
         throw new Error(`version ${meta.versionId} failed verification of the proof.`)
       }
@@ -195,8 +189,10 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
         meta.prerotation = false;
       }
       if (parameters.witnesses) {
-        meta.witnesses = parameters.witnesses;
-        meta.witnessThreshold = parameters.witnessThreshold || parameters.witnesses.length;
+        meta.witness = {
+          witnesses: parameters.witnesses,
+          threshold: parameters.witnessThreshold || parameters.witnesses.length
+        };
       }
     }
     doc = clone(newDoc);
@@ -248,8 +244,7 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
 export const updateDID = async (options: UpdateDIDInterface): Promise<{did: string, doc: any, meta: DIDResolutionMeta, log: DIDLog}> => {
   const {
     log, updateKeys, context, verificationMethods, services, alsoKnownAs,
-    controller, domain, nextKeyHashes, witnesses, witnessThreshold
-  } = options;
+    controller, domain, nextKeyHashes, witness} = options;
   let {did, doc, meta} = await resolveDIDFromLog(log);
 
   // Check for required nextKeyHashes if prerotation is enabled
@@ -278,9 +273,8 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
     ...(nextKeyHashes ? {
       nextKeyHashes
     } : {}),
-    ...(witnesses || meta.witnesses ? {
-      witnesses: witnesses || meta.witnesses,
-      witnessThreshold: witnesses ? witnessThreshold || witnesses.length : meta.witnessThreshold
+    ...(witness !== undefined ? {
+      witness
     } : {})
   };
   const [currentVersion] = meta.versionId.split('-');
@@ -306,8 +300,11 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
     ...params
   };
 
-  if (newMeta.witnesses && newMeta.witnesses.length > 0) {
-    const witnessProofs = await collectWitnessProofs(newMeta.witnesses, [...log, logEntry] as DIDLog);
+  if (newMeta.witness && newMeta.witness.witnesses.length > 0) {
+    const witnessProofs = await collectWitnessProofs(
+      newMeta.witness.witnesses.map(w => w.id),
+      [...log, logEntry] as DIDLog
+    );
     if (witnessProofs.length > 0) {
       logEntry.proof = [...logEntry.proof, ...witnessProofs];
     }

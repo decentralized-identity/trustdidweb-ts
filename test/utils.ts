@@ -1,8 +1,6 @@
 import { deriveHash } from '../src/utils';
 import type { DIDLogEntry, DIDLog } from '../src/interfaces';
 
-const WITNESS_SERVER_URL = "http://localhost:8000";
-
 export function createMockDIDLog(entries: Partial<DIDLogEntry>[]): DIDLog {
   return entries.map((entry, index) => {
     const versionNumber = index + 1;
@@ -17,9 +15,9 @@ export function createMockDIDLog(entries: Partial<DIDLogEntry>[]): DIDLog {
   });
 }
 
-export const isWitnessServerRunning = async () => {
+export const isWitnessServerRunning = async (url: string) => {
   try {
-    const response = await fetch(`${WITNESS_SERVER_URL}/health`);
+    const response = await fetch(`${url}/health`);
     if (response.ok) {
       return true;
     }
