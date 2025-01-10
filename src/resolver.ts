@@ -1,11 +1,18 @@
 import { Elysia } from 'elysia'
-import { getLatestDIDDoc, getLogFileForBase, getLogFileForSCID } from './routes/did';
 import { createWitnessProof } from './witness';
 import { config } from './config';
 
+export const getFile = async ({params: {id, file}}: {params: {id: string; file: string}}) => {
+  try {
+    return await Bun.file(`./src/routes/${id}/${file}`).text();
+  } catch (e) {
+    console.error(e)
+    return new Response(JSON.stringify({error: 'Failed to resolve File'}), {status: 404});
+  }
+}
+
 const app = new Elysia()
   .get('/health', 'ok')
-  .get('/.well-known/did.jsonl', () => getLogFileForBase())
   .post('/witness', async ({body}) => {
     try {
       const result = await createWitnessProof((body as any).log);
@@ -21,15 +28,8 @@ const app = new Elysia()
   })
   .group('/:id', app => {
     return app
-      .get('/did.jsonl', ({params}) => getLogFileForSCID({params: {scid: params.id}}))
-      .get('/:version', ({params: {id, version}}) => {
-        console.log(version)
-      })
-      .get('/versions', ({params: {id}}) => {
-        console.log('versions')
-      })
-      .get('/', ({params}) => getLatestDIDDoc({params}))
-    })
+      .get('/:file', ({params: {id, file}}) => getFile({params: {id, file}}))
+  })
 
 const port = config.getEnvValue('PORT') || 8000;
 
