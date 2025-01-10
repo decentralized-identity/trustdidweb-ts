@@ -1,5 +1,5 @@
 {
-  "name": "trustdidweb-ts",
+  "name": "webvh-ts",
   "module": "dist/esm/index.js",
   "type": "module",
   "version": "0.0.17",
@@ -43,7 +43,7 @@
     "nanoid": "^5.0.8"
   },
   "bin": {
-    "tdw": "./dist/cli/tdw.js"
+    "didwebvh": "./dist/cli/didwebvh.js"
   },
   "exports": {
     ".": {

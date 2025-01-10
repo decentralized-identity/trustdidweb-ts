@@ -114,20 +114,20 @@ test("Require `nextKeyHashes` to continue if previously set", async () => {
       versionId: "1-5v2bjwgmeqpnuu669zd7956w1w14",
       versionTime: "2024-06-06T08:23:06Z",
       parameters: {
-        method: "did:tdw:0.4",
+        method: "did:webvh:0.5",
         scid: "5v2bjwgmeqpnuu669zd7956w1w14",
         updateKeys: [ "z6Mkr2D4ixckmQx8tAVvXEhMuaMhzahxe61qJt7G9vYyiXiJ" ],
         nextKeyHashes: ["hash1"]
       },
       state: {
         "@context": [ "https://www.w3.org/ns/did/v1", "https://w3id.org/security/multikey/v1" ],
-        id: "did:tdw:example.com:5v2bjwgmeqpnuu669zd7956w1w14",
-        controller: "did:tdw:example.com:5v2bjwgmeqpnuu669zd7956w1w14",
-        authentication: [ "did:tdw:example.com:5v2bjwgmeqpnuu669zd7956w1w14#9vYyiXiJ" ],
+        id: "did:webvh:example.com:5v2bjwgmeqpnuu669zd7956w1w14",
+        controller: "did:webvh:example.com:5v2bjwgmeqpnuu669zd7956w1w14",
+        authentication: [ "did:webvh:example.com:5v2bjwgmeqpnuu669zd7956w1w14#9vYyiXiJ" ],
         verificationMethod: [
           {
-            id: "did:tdw:example.com:5v2bjwgmeqpnuu669zd7956w1w14#9vYyiXiJ",
-            controller: "did:tdw:example.com:5v2bjwgmeqpnuu669zd7956w1w14",
+            id: "did:webvh:example.com:5v2bjwgmeqpnuu669zd7956w1w14#9vYyiXiJ",
+            controller: "did:webvh:example.com:5v2bjwgmeqpnuu669zd7956w1w14",
             type: "Multikey",
             publicKeyMultibase: "z6Mkr2D4ixckmQx8tAVvXEhMuaMhzahxe61qJt7G9vYyiXiJ",
           }
@@ -190,11 +190,11 @@ test("updateKeys MUST be in nextKeyHashes when reading", async () => {
       versionTime: createDate(),
       parameters: { 
         updateKeys: ['z6MkrgaxvewsoLCWRn8GnYBGUygJmd5CHUUN46GYSHmQrkC7'], 
-        method: "did:tdw:0.4", 
+        method: "did:webvh:0.5", 
         scid: "test-scid", 
         nextKeyHashes: ['QmbWm3djZxbAbqZjqFLMP2ywokqFRD2PwoTcUSdbbsdpkM']
       },
-      state: { id: "did:tdw:example.com:test-scid" },
+      state: { id: "did:webvh:example.com:test-scid" },
       proof: []
     },
     {
@@ -203,7 +203,7 @@ test("updateKeys MUST be in nextKeyHashes when reading", async () => {
       parameters: {
         updateKeys: ['z6MkjkTQkTkTh1czqfofbtDFUVEr6Hzzn1zEZ16BYi67TPoE']
       },
-      state: { id: "did:tdw:example.com:test-scid" },
+      state: { id: "did:webvh:example.com:test-scid" },
       proof: []
     }
   ]);
@@ -296,7 +296,7 @@ test("Create DID with witnesses", async () => {
   mock("https://example.com/1234/witness", { method: "POST", response: { data: {proof: {
     type: "DataIntegrityProof",
     cryptosuite: "eddsa-jcs-2022",
-    verificationMethod: "did:tdw:1234:example.com:1234#key1",
+    verificationMethod: "did:webvh:1234:example.com:1234#key1",
     created: "2023-06-18T21:19:10Z",
     proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
     proofPurpose: "authentication"
@@ -304,7 +304,7 @@ test("Create DID with witnesses", async () => {
   mock("https://example.com/5678/witness", { method: "POST", response: { data: {proof: {
     type: "DataIntegrityProof",
     cryptosuite: "eddsa-jcs-2022",
-    verificationMethod: "did:tdw:5678:example.com:5678#key1",
+    verificationMethod: "did:webvh:5678:example.com:5678#key1",
     created: "2023-06-18T21:19:10Z",
     proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
     proofPurpose: "authentication"
@@ -315,7 +315,7 @@ test("Create DID with witnesses", async () => {
     signer: createSigner(authKey),
     updateKeys: [authKey.publicKeyMultibase!],
     verificationMethods: [authKey],
-    witnesses: ['did:tdw:1234:example.com:1234', 'did:tdw:5678:example.com:5678'],
+    witnesses: ['did:webvh:1234:example.com:1234', 'did:webvh:5678:example.com:5678'],
     witnessThreshold: 1
   });
 
@@ -328,7 +328,7 @@ test("Update DID with witnesses", async () => {
   mock("https://example.com/1234/witness", { method: "POST", response: { data: {proof: {
     type: "DataIntegrityProof",
     cryptosuite: "eddsa-jcs-2022",
-    verificationMethod: "did:tdw:1234:example.com:1234#key1",
+    verificationMethod: "did:webvh:1234:example.com:1234#key1",
     created: "2023-06-18T21:19:10Z",
     proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
     proofPurpose: "authentication"
@@ -336,7 +336,7 @@ test("Update DID with witnesses", async () => {
   mock("https://example.com/5678/witness", { method: "POST", response: { data: {proof: {
     type: "DataIntegrityProof",
     cryptosuite: "eddsa-jcs-2022",
-    verificationMethod: "did:tdw:5678:example.com:5678#key1",
+    verificationMethod: "did:webvh:5678:example.com:5678#key1",
     created: "2023-06-18T21:19:10Z",
     proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
     proofPurpose: "authentication"
@@ -353,7 +353,7 @@ test("Update DID with witnesses", async () => {
     log,
     signer: createSigner(authKey),
     updateKeys: [authKey.publicKeyMultibase!],
-    witnesses: ['did:tdw:1234:example.com:1234', 'did:tdw:5678:example.com:5678'],
+    witnesses: ['did:webvh:1234:example.com:1234', 'did:webvh:5678:example.com:5678'],
     witnessThreshold: 2
   });
 

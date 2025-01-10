@@ -20,7 +20,7 @@ const isKeyAuthorized = (verificationMethod: string, updateKeys: string[]): bool
 const isWitnessAuthorized = (verificationMethod: string, witnesses: string[]): boolean => {
   if (config.getEnvValue('IGNORE_WITNESS_IS_AUTHORIZED') === 'true') return true;
 
-  if (verificationMethod.startsWith('did:tdw:')) {
+  if (verificationMethod.startsWith('did:webvh:')) {
     const didWithoutFragment = verificationMethod.split('#')[0];
     return witnesses.includes(didWithoutFragment);
   }
@@ -42,7 +42,7 @@ export const documentStateIsValid = async (doc: any, updateKeys: string[], witne
       if (!isKeyAuthorized(proof.verificationMethod, updateKeys)) {
         throw new Error(`Key ${proof.verificationMethod} is not authorized to update.`);
       }
-    } else if (proof.verificationMethod.startsWith('did:tdw:')) {
+    } else if (proof.verificationMethod.startsWith('did:webvh:')) {
       if (witnesses.length > 0 && !isWitnessAuthorized(proof.verificationMethod, witnesses)) {
         throw new Error(`Key ${proof.verificationMethod} is not from an authorized witness.`);
       }

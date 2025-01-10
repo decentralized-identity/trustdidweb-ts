@@ -33,7 +33,7 @@ Options:
 
 Examples:
   bun run cli create --domain example.com --portable --witness did:example:witness1 --witness did:example:witness2
-  bun run cli resolve --did did:tdw:123456:example.com
+  bun run cli resolve --did did:webvh:123456:example.com
   bun run cli update --log ./did.jsonl --output ./updated-did.jsonl --add-vm keyAgreement --service LinkedDomains,https://example.com
   bun run cli deactivate --log ./did.jsonl --output ./deactivated-did.jsonl
 `;
@@ -95,7 +95,7 @@ export async function handleCreate(args: string[]) {
 
       // Write DID document for reference
       const docPath = output.replace('.jsonl', '.json');
-      fs.writeFileSync(docPath, JSON.stringify(doc, null, 2).replace(/did:tdw:([^:]+)/g, 'did:web'));
+      fs.writeFileSync(docPath, JSON.stringify(doc, null, 2).replace(/did:webvh:([^:]+)/g, 'did:web'));
       console.log(`DID WEB document written to ${docPath}`);
     } else {
       // If no output specified, print to console
@@ -232,7 +232,7 @@ export async function handleUpdate(args: string[]) {
 
       // Write DID document for reference
       const docPath = output.replace('.jsonl', '.json');
-      fs.writeFileSync(docPath, JSON.stringify(result.doc, null, 2).replace(/did:tdw:([^:]+)/g, 'did:web'));
+      fs.writeFileSync(docPath, JSON.stringify(result.doc, null, 2).replace(/did:webvh:([^:]+)/g, 'did:web'));
       console.log(`DID WEB document written to ${docPath}`);
     }
 
