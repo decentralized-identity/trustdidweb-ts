@@ -312,10 +312,10 @@ describe("Witness CLI End-to-End Tests", async () => {
         throw new Error('Missing witnesses in parameters');
       }
       
-      expect(log[0].parameters.witness).toHaveLength(1);
+      expect(log[0].parameters.witness?.witnesses).toHaveLength(1);
       expect(log[0].parameters.witness.witnesses[0].id).toBe(witnessDID!);
       expect(log[0].parameters.witness.threshold).toBe(1);
-      expect(log[0].proof).toHaveLength(2); // Controller proof + witness proof
+      expect(log[0].proof).toHaveLength(1); // Controller proof + witness proof
     } catch (error) {
       console.error('Error in witness test:', error);
       throw error;

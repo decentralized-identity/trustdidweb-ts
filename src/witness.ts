@@ -3,7 +3,7 @@ import { canonicalize } from 'json-canonicalize';
 import { createHash } from 'crypto';
 import { resolveDIDFromLog } from './method';
 import { config } from './config';
-import type { DataIntegrityProof, DIDLog, DIDLogEntry, WitnessEntry, WitnessParameter, WitnessProofFile } from './interfaces';
+import type { DataIntegrityProof, DIDLog, DIDLogEntry, WitnessEntry, WitnessParameter, WitnessProofFileEntry } from './interfaces';
 
 // Parse the DID_VERIFICATION_METHODS environment variable
 const verificationMethods = JSON.parse(Buffer.from(process.env.DID_VERIFICATION_METHODS || 'W10=', 'base64').toString('utf8'));
@@ -45,7 +45,7 @@ export function calculateWitnessWeight(proofs: DataIntegrityProof[], witnesses: 
 
 export function verifyWitnessProofs(
   logEntry: DIDLogEntry,
-  witnessProofs: WitnessProofFile[],
+  witnessProofs: WitnessProofFileEntry[],
   currentWitness: WitnessParameter
 ): void {
   // Find proofs for this version or later versions

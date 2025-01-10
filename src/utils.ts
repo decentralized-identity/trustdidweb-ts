@@ -5,7 +5,7 @@ import { config } from './config';
 import { nanoid } from 'nanoid';
 import { sha256 } from 'multiformats/hashes/sha2'
 import { resolveDIDFromLog } from './method';
-import type { CreateDIDInterface, DataIntegrityProof, DIDDoc, DIDLog, VerificationMethod } from './interfaces';
+import type { CreateDIDInterface, DataIntegrityProof, DIDDoc, DIDLog, VerificationMethod, WitnessProofFileEntry } from './interfaces';
 import { createBuffer, bufferToString } from './utils/buffer';
 
 export const readLogFromDisk = (path: string): DIDLog => {
@@ -149,6 +149,23 @@ export async function fetchLogFromIdentifier(identifier: string, controlled: boo
   }
 }
 
+export async function fetchDIDWitnessesFromIdentifier(identifier: string): Promise<WitnessProofFileEntry[]> {
+  try {
+    let url = getFileUrl(identifier);
+    url = url.replace('did.jsonl', 'did-witness.json');
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json() as WitnessProofFileEntry[];
+  } catch (error) {
+    console.error('Error fetching DID witnesses:', error);
+    throw error;
+  }
+}
+
 export const createDate = (created?: Date | string) => new Date(created ?? Date.now()).toISOString().slice(0,-5)+'Z';
 
 export function bytesToHex(bytes: Uint8Array): string {
@@ -230,52 +247,6 @@ export const normalizeVMs = (verificationMethod: VerificationMethod[] | undefine
   }
   return {all};
 }
-
-export const collectWitnessProofs = async (witnesses: string[], log: DIDLog): Promise<DataIntegrityProof[]> => {
-  const proofs: DataIntegrityProof[] = [];
-
-  const collectProof = async (witness: string): Promise<void> => {
-    const parts = witness.split(':');
-    if (parts.length < 4) {
-      throw new Error(`${witness} is not a valid did:webvh identifier`);
-    }
-    
-    const witnessUrl = getBaseUrl(witness) + '/witness';
-    try {
-      const response = await fetch(witnessUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ log }),
-      });
-
-      if (!response.ok) {
-        console.warn(`Witness ${witnessUrl} responded with status: ${response.status}`);
-        return;
-      }
-
-      const data = await response.json() as any;
-      if (data.proof) {
-        proofs.push(data.proof);
-      } else if (data.data?.proof) {
-        proofs.push(data.data.proof);
-      } else {
-        console.warn(`Witness ${witnessUrl} did not provide a valid proof`);
-      }
-    } catch (error: any) {
-      console.error(`Error collecting proof from witness ${witnessUrl}:`, error.message);
-    }
-  };
-
-  await Promise.all(witnesses.map(collectProof));
-  
-  if (proofs.length === 0) {
-    console.warn('No witness proofs were collected');
-  }
-
-  return proofs;
-};
 
 export const resolveVM = async (vm: string) => {
   try {

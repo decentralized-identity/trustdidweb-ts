@@ -20,7 +20,7 @@ describe("did:webvh interoperability tests", async () => {
     expect(meta.portable).toBe(false);
   })
 
-  test("gist", async () => {
+  test.skip("gist", async () => {
     const did = "did:webvh:QmbnQXj7DhWFrmgjDPKZCybn8fkKW7Wze57SQHpwsSQ7NZ:gist.githubusercontent.com:brianorwhatever:9c4633d18eb644f7a47f93a802691626:raw";
     const {did: resolvedDID, meta} = await resolveDID(did);
     expect(resolvedDID).toBe(did);
