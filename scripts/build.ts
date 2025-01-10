@@ -103,7 +103,7 @@ const cliConfig: BuildConfig = {
   format: "esm",
   outdir: "./dist/cli",
   naming: {
-    entry: "tdw.js"
+    entry: "didwebvh.js"
   }
 };
 
@@ -122,7 +122,7 @@ function createDistPackageJson() {
     browser: "./browser/index.js",
     types: "./types/index.d.ts",
     bin: {
-      "tdw": "./cli/tdw.js"
+      "didwebvh": "./cli/didwebvh.js"
     },
     files: [
       "cjs",
@@ -284,7 +284,7 @@ async function build() {
   }
 
   // Make CLI executable
-  const proc2 = Bun.spawn(["chmod", "+x", "dist/cli/tdw.js"], {
+  const proc2 = Bun.spawn(["chmod", "+x", "dist/cli/didwebvh.js"], {
     stdout: "inherit",
     stderr: "inherit",
   });

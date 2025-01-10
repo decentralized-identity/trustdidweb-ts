@@ -3,7 +3,7 @@ import { createDID, deactivateDID, resolveDIDFromLog, updateDID } from "../src/m
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 import type { DIDLog, VerificationMethod } from "../src/interfaces";
 
-describe("did:tdw normative tests", async () => {
+describe("did:webvh normative tests", async () => {
   let newDoc1: any;
   let newLog1: DIDLog;
   let authKey1: VerificationMethod;

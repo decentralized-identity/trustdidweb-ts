@@ -93,8 +93,8 @@ export const clone = (input: any) => JSON.parse(JSON.stringify(input));
 
 export const getBaseUrl = (id: string) => {
   const parts = id.split(':');
-  if (!id.startsWith('did:tdw:') || parts.length < 4) {
-    throw new Error(`${id} is not a valid did:tdw identifier`);
+  if (!id.startsWith('did:webvh:') || parts.length < 4) {
+    throw new Error(`${id} is not a valid did:webvh identifier`);
   }
   
   let domain = parts.slice(3).join('/');
@@ -218,7 +218,7 @@ export const collectWitnessProofs = async (witnesses: string[], log: DIDLog): Pr
   const collectProof = async (witness: string): Promise<void> => {
     const parts = witness.split(':');
     if (parts.length < 4) {
-      throw new Error(`${witness} is not a valid did:tdw identifier`);
+      throw new Error(`${witness} is not a valid did:webvh identifier`);
     }
     
     const witnessUrl = getBaseUrl(witness) + '/witness';
@@ -263,7 +263,7 @@ export const resolveVM = async (vm: string) => {
     if (vm.startsWith('did:key:')) {
       return {publicKeyMultibase: vm.split('did:key:')[1].split('#')[0]}
     }
-    else if (vm.startsWith('did:tdw:')) {
+    else if (vm.startsWith('did:webvh:')) {
       const url = getFileUrl(vm.split('#')[0]);
       const didLog = await (await fetch(url)).text();
       const logEntries: DIDLog = didLog.trim().split('\n').map(l => JSON.parse(l));

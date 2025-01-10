@@ -43,7 +43,7 @@ describe("CLI End-to-End Tests", () => {
     const log = readLogFromDisk(TEST_LOG_FILE);
     expect(log).toHaveLength(1);
     expect(log[0].parameters.portable).toBe(true);
-    expect(log[0].parameters.method).toBe('did:tdw:0.4');
+    expect(log[0].parameters.method).toBe('did:webvh:0.5');
     
     // Get the DID from the log
     const { did, meta } = await resolveDIDFromLog(log);

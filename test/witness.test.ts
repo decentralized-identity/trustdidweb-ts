@@ -57,7 +57,7 @@ const runWitnessTests = async () => {
         signer: createSigner(authKey),
         updateKeys: [authKey.publicKeyMultibase!],
         verificationMethods: [authKey],
-        witnesses: [`did:tdw:${WITNESS_SCID}:${WITNESS_DOMAIN}`],
+        witnesses: [`did:webvh:${WITNESS_SCID}:${WITNESS_DOMAIN}`],
         witnessThreshold: 1
       });
       const resolved = await resolveDIDFromLog(initialDID.log);
@@ -93,7 +93,7 @@ const runWitnessTests = async () => {
         signer: createSigner(authKey),
         updateKeys: [authKey.publicKeyMultibase!],
         verificationMethods: [authKey],
-        witnesses: [`did:tdw:${WITNESS_SERVER_URL.split('//')[1]}`],
+        witnesses: [`did:webvh:${WITNESS_SERVER_URL.split('//')[1]}`],
         witnessThreshold: 1
       });
 
