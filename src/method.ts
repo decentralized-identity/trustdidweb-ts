@@ -1,4 +1,4 @@
-import { clone, collectWitnessProofs, createDate, createDIDDoc, createSCID, deriveHash, deriveNextKeyHash, fetchLogFromIdentifier, findVerificationMethod, normalizeVMs } from "./utils";
+import { clone, collectWitnessProofs, createDate, createDIDDoc, createSCID, deriveHash, deriveNextKeyHash, fetchLogFromIdentifier, findVerificationMethod, getActiveDIDs, getBaseUrl, normalizeVMs } from "./utils";
 import { BASE_CONTEXT, METHOD, PLACEHOLDER, PROTOCOL } from './constants';
 import { documentStateIsValid, hashChainValid, newKeysAreInNextKeys, scidIsFromHash } from './assertions';
 import type { CreateDIDInterface, DIDResolutionMeta, DIDLogEntry, DIDLog, UpdateDIDInterface, DeactivateDIDInterface } from './interfaces';
@@ -72,9 +72,14 @@ export const resolveDID = async (did: string, options: {
   versionId?: string, 
   versionTime?: Date,
   verificationMethod?: string
-} = {}): Promise<{did: string, doc: any, meta: DIDResolutionMeta}> => {
-  const log = await fetchLogFromIdentifier(did);
-  return resolveDIDFromLog(log, options);
+} = {}): Promise<{did: string, doc: any, meta: DIDResolutionMeta, controlled: boolean}> => {
+  const activeDIDs = await getActiveDIDs();
+  const controlled = activeDIDs.includes(did);
+  const log = await fetchLogFromIdentifier(did, controlled);
+  if (log.length === 0) {
+    throw new Error(`DID ${did} not found`);
+  }
+  return {...(await resolveDIDFromLog(log, options)), controlled};
 }
 
 export const resolveDIDFromLog = async (log: DIDLog, options: {
@@ -197,7 +202,27 @@ export const resolveDIDFromLog = async (log: DIDLog, options: {
     doc = clone(newDoc);
     did = doc.id;
 
-    // Check for matching verification method
+    // Add default services if they don't exist
+    doc.service = doc.service || [];
+    const baseUrl = getBaseUrl(did);
+
+    if (!doc.service.some((s: any) => s.id === '#files')) {
+      doc.service.push({
+        id: '#files',
+        type: 'relativeRef',
+        serviceEndpoint: baseUrl
+      });
+    }
+
+    if (!doc.service.some((s: any) => s.id === '#whois')) {
+      doc.service.push({
+        "@context": "https://identity.foundation/linked-vp/contexts/v1",
+        id: '#whois',
+        type: 'LinkedVerifiablePresentation',
+        serviceEndpoint: `${baseUrl}/whois.vp`
+      });
+    }
+
     if (options.verificationMethod && findVerificationMethod(doc, options.verificationMethod)) {
       return {did, doc, meta};
     }

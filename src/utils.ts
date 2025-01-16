@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import bs58 from 'bs58'
 import { canonicalize } from 'json-canonicalize';
+import { config } from './config';
 import { nanoid } from 'nanoid';
 import { sha256 } from 'multiformats/hashes/sha2'
 import { resolveDIDFromLog } from './method';
@@ -113,17 +114,35 @@ export const getFileUrl = (id: string) => {
   return `${baseUrl}/.well-known/did.jsonl`;
 }
 
-export async function fetchLogFromIdentifier(identifier: string): Promise<DIDLog> {
+export async function fetchLogFromIdentifier(identifier: string, controlled: boolean = false): Promise<DIDLog> {
   try {
+    if (controlled) {
+      const didParts = identifier.split(':');
+      const fileIdentifier = didParts.slice(4).join(':');
+      const logPath = `./src/routes/${fileIdentifier || '.well-known'}/did.jsonl`;
+      
+      try {
+        const text = (await Bun.file(logPath).text()).trim();
+        if (!text) {
+          return [];
+        }
+        return text.split('\n').map(line => JSON.parse(line));
+      } catch (error) {
+        throw new Error(`Error reading local DID log: ${error}`);
+      }
+    }
+
     const url = getFileUrl(identifier);
     const response = await fetch(url);
-    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
-    const text = await response.text();
-    return text.trim().split('\n').map(line => JSON.parse(line));
+    const text = (await response.text()).trim();
+    if (!text) {
+      throw new Error(`DID log not found for ${identifier}`);
+    }
+    return text.split('\n').map(line => JSON.parse(line));
   } catch (error) {
     console.error('Error fetching DID log:', error);
     throw error;
@@ -293,4 +312,19 @@ export const findVerificationMethod = (doc: any, vmId: string): VerificationMeth
   }
 
   return null;
+}
+
+export async function getActiveDIDs(): Promise<string[]> {
+  const activeDIDs: string[] = [];
+  
+  try {
+    for (const vm of config.getVerificationMethods()) {
+      const did = vm.controller || vm.id.split('#')[0];
+      activeDIDs.push(did);
+    }
+  } catch (error) {
+    console.error('Error processing verification methods:', error);
+  }
+  
+  return activeDIDs;
 }

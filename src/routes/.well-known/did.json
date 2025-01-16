@@ -6,14 +6,14 @@
   "id": "did:web:localhost%3A8000",
   "controller": "did:web:localhost%3A8000",
   "assertionMethod": [
-    "did:web:localhost%3A8000#87GnHBKQ"
+    "did:web:localhost%3A8000#4P6GVTpQ"
   ],
   "verificationMethod": [
     {
-      "id": "did:web:localhost%3A8000#87GnHBKQ",
+      "id": "did:web:localhost%3A8000#4P6GVTpQ",
       "controller": "did:web:localhost%3A8000",
       "type": "Multikey",
-      "publicKeyMultibase": "z6Mkiax4hWqMLVY8mkHrh2tBSkabkcaHT1tKdRiC87GnHBKQ"
+      "publicKeyMultibase": "z6MkvDJLghkVAzigMw3jZGQ5qMTDnb3iprMqDiyR4P6GVTpQ"
     }
   ]
 }
