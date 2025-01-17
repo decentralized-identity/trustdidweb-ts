@@ -5,6 +5,8 @@ import { canonicalize } from 'json-canonicalize';
 import { createHash } from './utils/crypto';
 import { config } from './config';
 import { bufferToString, concatBuffers } from './utils/buffer';
+import { WitnessParameter } from './interfaces';
+import { validateWitnessParameter } from './witness';
 
 const isKeyAuthorized = (verificationMethod: string, updateKeys: string[]): boolean => {
   if (config.getEnvValue('IGNORE_ASSERTION_KEY_IS_AUTHORIZED') === 'true') return true;
@@ -27,12 +29,16 @@ const isWitnessAuthorized = (verificationMethod: string, witnesses: string[]): b
   return false;
 };
 
-export const documentStateIsValid = async (doc: any, updateKeys: string[], witnesses: string[] = []) => {
+  export const documentStateIsValid = async (doc: any, updateKeys: string[], witness: WitnessParameter | undefined | null) => {
   if (config.getEnvValue('IGNORE_ASSERTION_DOCUMENT_STATE_IS_VALID') === 'true') return true;
   
   let {proof: proofs, ...rest} = doc;
   if (!Array.isArray(proofs)) {
     proofs = [proofs];
+  }
+
+  if (witness && witness.witnesses.length > 0) {
+    validateWitnessParameter(witness);
   }
 
   for (let i = 0; i < proofs.length; i++) {
@@ -43,7 +49,7 @@ export const documentStateIsValid = async (doc: any, updateKeys: string[], witne
         throw new Error(`Key ${proof.verificationMethod} is not authorized to update.`);
       }
     } else if (proof.verificationMethod.startsWith('did:webvh:')) {
-      if (witnesses.length > 0 && !isWitnessAuthorized(proof.verificationMethod, witnesses)) {
+      if (witness && witness.witnesses.length > 0 && !isWitnessAuthorized(proof.verificationMethod, witness.witnesses.map((w: {id: string}) => w.id))) {
         throw new Error(`Key ${proof.verificationMethod} is not from an authorized witness.`);
       }
     } else {

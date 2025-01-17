@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import bs58 from 'bs58'
 import { canonicalize } from 'json-canonicalize';
+import { config } from './config';
 import { nanoid } from 'nanoid';
 import { sha256 } from 'multiformats/hashes/sha2'
 import { resolveDIDFromLog } from './method';
-import type { CreateDIDInterface, DataIntegrityProof, DIDDoc, DIDLog, VerificationMethod } from './interfaces';
+import type { CreateDIDInterface, DataIntegrityProof, DIDDoc, DIDLog, VerificationMethod, WitnessProofFileEntry } from './interfaces';
 import { createBuffer, bufferToString } from './utils/buffer';
 
 export const readLogFromDisk = (path: string): DIDLog => {
@@ -113,19 +114,54 @@ export const getFileUrl = (id: string) => {
   return `${baseUrl}/.well-known/did.jsonl`;
 }
 
-export async function fetchLogFromIdentifier(identifier: string): Promise<DIDLog> {
+export async function fetchLogFromIdentifier(identifier: string, controlled: boolean = false): Promise<DIDLog> {
   try {
+    if (controlled) {
+      const didParts = identifier.split(':');
+      const fileIdentifier = didParts.slice(4).join(':');
+      const logPath = `./src/routes/${fileIdentifier || '.well-known'}/did.jsonl`;
+      
+      try {
+        const text = (await Bun.file(logPath).text()).trim();
+        if (!text) {
+          return [];
+        }
+        return text.split('\n').map(line => JSON.parse(line));
+      } catch (error) {
+        throw new Error(`Error reading local DID log: ${error}`);
+      }
+    }
+
     const url = getFileUrl(identifier);
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const text = (await response.text()).trim();
+    if (!text) {
+      throw new Error(`DID log not found for ${identifier}`);
+    }
+    return text.split('\n').map(line => JSON.parse(line));
+  } catch (error) {
+    console.error('Error fetching DID log:', error);
+    throw error;
+  }
+}
+
+export async function fetchDIDWitnessesFromIdentifier(identifier: string): Promise<WitnessProofFileEntry[]> {
+  try {
+    let url = getFileUrl(identifier);
+    url = url.replace('did.jsonl', 'did-witness.json');
     const response = await fetch(url);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
-    const text = await response.text();
-    return text.trim().split('\n').map(line => JSON.parse(line));
+    return await response.json() as WitnessProofFileEntry[];
   } catch (error) {
-    console.error('Error fetching DID log:', error);
+    console.error('Error fetching DID witnesses:', error);
     throw error;
   }
 }
@@ -212,52 +248,6 @@ export const normalizeVMs = (verificationMethod: VerificationMethod[] | undefine
   return {all};
 }
 
-export const collectWitnessProofs = async (witnesses: string[], log: DIDLog): Promise<DataIntegrityProof[]> => {
-  const proofs: DataIntegrityProof[] = [];
-
-  const collectProof = async (witness: string): Promise<void> => {
-    const parts = witness.split(':');
-    if (parts.length < 4) {
-      throw new Error(`${witness} is not a valid did:webvh identifier`);
-    }
-    
-    const witnessUrl = getBaseUrl(witness) + '/witness';
-    try {
-      const response = await fetch(witnessUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ log }),
-      });
-
-      if (!response.ok) {
-        console.warn(`Witness ${witnessUrl} responded with status: ${response.status}`);
-        return;
-      }
-
-      const data = await response.json() as any;
-      if (data.proof) {
-        proofs.push(data.proof);
-      } else if (data.data?.proof) {
-        proofs.push(data.data.proof);
-      } else {
-        console.warn(`Witness ${witnessUrl} did not provide a valid proof`);
-      }
-    } catch (error: any) {
-      console.error(`Error collecting proof from witness ${witnessUrl}:`, error.message);
-    }
-  };
-
-  await Promise.all(witnesses.map(collectProof));
-  
-  if (proofs.length === 0) {
-    console.warn('No witness proofs were collected');
-  }
-
-  return proofs;
-};
-
 export const resolveVM = async (vm: string) => {
   try {
     if (vm.startsWith('did:key:')) {
@@ -293,4 +283,19 @@ export const findVerificationMethod = (doc: any, vmId: string): VerificationMeth
   }
 
   return null;
+}
+
+export async function getActiveDIDs(): Promise<string[]> {
+  const activeDIDs: string[] = [];
+  
+  try {
+    for (const vm of config.getVerificationMethods()) {
+      const did = vm.controller || vm.id.split('#')[0];
+      activeDIDs.push(did);
+    }
+  } catch (error) {
+    console.error('Error processing verification methods:', error);
+  }
+  
+  return activeDIDs;
 }

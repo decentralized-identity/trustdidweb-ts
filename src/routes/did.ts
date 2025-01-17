@@ -1,6 +1,6 @@
 import { resolveDIDFromLog } from '../method';
 import { getFileUrl } from '../utils';
-import type { DIDLog } from '../interfaces';
+
 export const getLatestDIDDoc = async ({params: {id}}: {params: {id: string;};}) => {
   try {
     console.log(`Resolving DID ${id}`);
@@ -21,4 +21,8 @@ export const getLogFileForSCID = async ({params: {scid}}: {params: {scid: string
 
 export const getLogFileForBase = async () => {
   return await Bun.file(`./src/routes/.well-known/did.jsonl`).text();
+}
+
+export const getWitnessProofFile = async () => {
+  return await Bun.file(`./src/routes/.well-known/did-witness.json`).text();
 }

@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, test } from "bun:test";
 import { createDID, deactivateDID, resolveDIDFromLog, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 import type { DIDLog, VerificationMethod } from "../src/interfaces";
+import { createWitnessProof } from "../src/utils/witness";
 
 describe("did:webvh normative tests", async () => {
   let newDoc1: any;
@@ -66,5 +67,124 @@ describe("did:webvh normative tests", async () => {
   test("Resolver encountering 'deactivated': false MUST return deactivated in metadata (negative)", async () => {
     const resolved = await resolveDIDFromLog(newLog1);
     expect(resolved.meta.deactivated).toBeFalse();
+  });
+});
+
+describe("did:webvh normative witness tests", async () => {
+  let authKey1: VerificationMethod;
+  let witness1: VerificationMethod, witness2: VerificationMethod, witness3: VerificationMethod;
+  let initialDID: { did: string; doc: any; meta: any; log: DIDLog };
+
+  beforeAll(async () => {
+    authKey1 = await generateEd25519VerificationMethod();
+    witness1 = await generateEd25519VerificationMethod();
+    witness2 = await generateEd25519VerificationMethod();
+    witness3 = await generateEd25519VerificationMethod();
+  });
+
+  test("witness parameter MUST use did:key DIDs", async () => {
+    let err;
+    try {
+      const {doc, log, did} = await createDID({
+        domain: 'example.com',
+        signer: createSigner(authKey1),
+        updateKeys: [authKey1.publicKeyMultibase!],
+        verificationMethods: [authKey1],
+        witness: {
+          threshold: 2,
+          witnesses: [
+            { id: "did:web:example.com", weight: 1 }, // Invalid - not did:key
+            { id: `did:key:${witness1.publicKeyMultibase}`, weight: 1 }
+          ]
+        }
+      });
+    } catch (e: any) {
+      err = e;
+    }
+    expect(err).toBeDefined();
+    expect(err.message).toContain("Witness DIDs must be did:key format");
+  });
+
+  test("witness threshold MUST be met for DID updates", async () => {
+    // First create a DID with witnesses
+    initialDID = await createDID({
+      domain: 'example.com',
+      signer: createSigner(authKey1),
+      updateKeys: [authKey1.publicKeyMultibase!],
+      verificationMethods: [authKey1],
+      witness: {
+        threshold: 2,
+        witnesses: [
+          { id: `did:key:${witness1.publicKeyMultibase}`, weight: 1 },
+          { id: `did:key:${witness2.publicKeyMultibase}`, weight: 1 },
+          { id: `did:key:${witness3.publicKeyMultibase}`, weight: 1 }
+        ]
+      }
+    });
+
+    // Mock witness proofs file
+    const mockWitnessProofs = [
+      {
+        versionId: initialDID.log[0].versionId,
+        proof: [
+          await createWitnessProof(witness1, initialDID.log[0].versionId)
+        ]
+      }
+    ];
+
+    let err;
+    try {
+      await resolveDIDFromLog(initialDID.log, { witnessProofs: mockWitnessProofs as any });
+    } catch (e: any) {
+      err = e;
+    }
+    expect(err).toBeDefined();
+    expect(err.message).toContain("Witness threshold not met");
+  });
+
+  test("witness proofs MUST use eddsa-jcs-2022 cryptosuite", async () => {
+    const mockWitnessProofs = [
+      {
+        versionId: initialDID.log[0].versionId,
+        proof: [
+          {...(await createWitnessProof(witness1, initialDID.log[0].versionId)), cryptosuite: 'invalid-suite'},
+          await createWitnessProof(witness2, initialDID.log[0].versionId)
+        ]
+      }
+    ];
+
+    let err;
+    try {
+      await resolveDIDFromLog(initialDID.log, { witnessProofs: mockWitnessProofs as any });
+    } catch (e: any) {
+      err = e;
+    }
+    expect(err).toBeDefined();
+    expect(err.message).toContain("Invalid witness proof cryptosuite");
+  });
+
+  test("resolver MUST verify witness proofs before accepting DID update", async () => {
+    const mockWitnessProofs = [
+      {
+        versionId: initialDID.log[0].versionId,
+        proof: [
+          {
+            type: "DataIntegrityProof",
+            cryptosuite: "eddsa-jcs-2022",
+            verificationMethod: `did:key:${witness1.publicKeyMultibase}#${witness1.publicKeyMultibase}`,
+            proofValue: "invalid-proof-value" // Invalid proof value
+          }
+        ]
+      }
+    ];
+
+    let err;
+    try {
+      await resolveDIDFromLog(initialDID.log, { witnessProofs: mockWitnessProofs as any });
+    } catch (e: any) {
+      err = e;
+    }
+    expect(err).toBeDefined();
+    expect(err.message).toContain("Invalid witness proof");
   });
 });

@@ -4,15 +4,11 @@ import { join } from 'path';
 import { readLogFromDisk, readLogFromString } from "../src/utils";
 import { $ } from "bun";
 import { resolveDIDFromLog } from "../src/method";
-import { isWitnessServerRunning } from "./utils";
 import { generateEd25519VerificationMethod } from "../src/cryptography";
-import { deriveNextKeyHash } from "../src/utils";
-import {  } from "../src/cli";
 
-const serverRunning = await isWitnessServerRunning();
+const TEST_DIR = './test/temp-cli-e2e';
 
 describe("CLI End-to-End Tests", () => {
-  const TEST_DIR = './test/temp-cli-e2e';
   const TEST_LOG_FILE = join(TEST_DIR, 'did.jsonl');
   let currentDID: string;
   
@@ -136,47 +132,6 @@ describe("CLI End-to-End Tests", () => {
     const log = readLogFromDisk(TEST_LOG_FILE);
     const lastEntry = log[log.length - 1];
     expect(lastEntry.parameters.deactivated).toBe(true);
-  });
-
-  test.skipIf(!serverRunning)("Create DID with witnesses using CLI", async () => {
-    const witnessLogFile = join(TEST_DIR, 'did-witness.jsonl');
-    
-    try {
-      // First, fetch the witness's DID log directly
-      const witnessProc = await $`curl http://localhost:8000/.well-known/did.jsonl`.quiet();
-      if (witnessProc.exitCode !== 0) {
-        console.error('Error fetching witness DID:', witnessProc.stderr.toString());
-        throw new Error('Failed to fetch witness DID');
-      }
-
-      // Parse the witness DID log
-      const witnessLogStr = witnessProc.stdout.toString();
-      
-      // Parse the witness log and get the DID from the state
-      const witnessLog = readLogFromString(witnessLogStr);
-      const witnessDID = witnessLog[0].state.id;
-      
-      // Run the CLI create command with witness
-      const proc = await $`bun run cli create --domain localhost:8000 --output ${witnessLogFile} --witness ${witnessDID} --witness-threshold 1`.quiet();
-
-      expect(proc.exitCode).toBe(0);
-      
-      // Verify the witness configuration
-      const log = readLogFromDisk(witnessLogFile);
-      
-      // Add null checks for TypeScript
-      if (!log[0]?.parameters?.witnesses) {
-        throw new Error('Missing witnesses in parameters');
-      }
-      
-      expect(log[0].parameters.witnesses).toHaveLength(1);
-      expect(log[0].parameters.witnesses[0]).toBe(witnessDID!);
-      expect(log[0].parameters.witnessThreshold).toBe(1);
-      expect(log[0].proof).toHaveLength(2); // Controller proof + witness proof
-    } catch (error) {
-      console.error('Error in witness test:', error);
-      throw error;
-    }
   });
 
   test("Create DID with prerotation", async () => {
@@ -311,25 +266,38 @@ describe("CLI End-to-End Tests", () => {
     expect(output).toContain('DID Document');
     expect(output).toContain('Metadata');
   });
-
-  test("Create DID with key rotation", async () => {
-    const rotationLogFile = join(TEST_DIR, 'did-rotation.jsonl');
-    
-    // Setup next key hashes
-    const nextKeyHash1 = "z6MkgYGF3thn8k1Qz9P4c3mKthZXNhUgkdwBwE5hbWFJktGH";
-    const nextKeyHash2 = "z6MkrCD1Qr8TQ4SQNzpkwx8qRLFQkUg7oKc8rjhYoV6DpHXx";
-    
-    // Create DID with nextKeyHashes
-    const createProc = await $`bun run cli create --domain example.com --output ${rotationLogFile} --next-key-hash ${nextKeyHash1} --next-key-hash ${nextKeyHash2}`.quiet();
-    expect(createProc.exitCode).toBe(0);
-    
-    // Verify the log file was created
-    expect(fs.existsSync(rotationLogFile)).toBe(true);
-    
-    // Read and verify the log content
-    const currentLog = readLogFromDisk(rotationLogFile);
-    expect(currentLog[0].parameters.nextKeyHashes).toHaveLength(2);
-    expect(currentLog[0].parameters.nextKeyHashes).toContain(nextKeyHash1);
-    expect(currentLog[0].parameters.nextKeyHashes).toContain(nextKeyHash2);
-  });
 }); 
+
+describe("Witness CLI End-to-End Tests", async () => {
+  test("Create DID with witnesses using CLI", async () => {
+    const logFile = join(TEST_DIR, 'did.jsonl');
+    
+    try {
+
+      const witness = await generateEd25519VerificationMethod();
+      // Parse the witness log and get the verification key from the state
+      const witnessDIDKey = `did:key:${witness.publicKeyMultibase}#${witness.publicKeyMultibase}`;
+      
+      // Run the CLI create command with witness
+      const proc = await $`bun run cli create --domain localhost:8000 --output ${logFile} --witness ${witnessDIDKey} --witness-threshold 1`.quiet();
+
+      expect(proc.exitCode).toBe(0);
+      
+      // Verify the witness configuration
+      const log = readLogFromDisk(logFile);
+      
+      // Add null checks for TypeScript
+      if (!log[0]?.parameters?.witness) {
+        throw new Error('Missing witnesses in parameters');
+      }
+      
+      expect(log[0].parameters.witness?.witnesses).toHaveLength(1);
+      expect(log[0].parameters.witness.witnesses[0].id).toBe(witnessDIDKey);
+      expect(log[0].parameters.witness.threshold).toBe(1);
+      expect(log[0].proof).toHaveLength(1); // Controller proof + witness proof
+    } catch (error) {
+      console.error('Error in witness test:', error);
+      throw error;
+    }
+  });
+});

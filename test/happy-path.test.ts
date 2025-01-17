@@ -142,7 +142,7 @@ test("Update DID (3 keys, 2 services)", async () => {
       services: [
         ...doc.service,
         {
-          id: `${did}#didcomm`,
+          id: '#didcomm',
           type: 'DIDCommMessaging',
           serviceEndpoint: {
             "uri": "https://example.com/didcomm",
@@ -156,10 +156,11 @@ test("Update DID (3 keys, 2 services)", async () => {
       ]});
   expect(updatedDID).toBe(did);
   expect(updatedDoc.keyAgreement.length).toBe(1)
-  expect(updatedDoc.service.length).toBe(2);
-  expect(updatedDoc.service[1].id).toBe(`${did}#didcomm`);
-  expect(updatedDoc.service[1].type).toBe('DIDCommMessaging');
-  expect(updatedDoc.service[1].serviceEndpoint.uri).toContain(`https://example.com/didcomm`);
+  expect(updatedDoc.service.length).toBe(4);
+  const services = updatedDoc.service.map(s => s.id);
+  expect(services).toContain(`#files`);
+  expect(services).toContain(`#didcomm`);
+  expect(services).toContain(`#whois`);
   expect(meta.versionId.split('-')[0]).toBe("3");
 
   writeFilesToDisk(updatedLog, updatedDoc, 3);

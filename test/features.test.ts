@@ -2,7 +2,7 @@ import { beforeAll, expect, test} from "bun:test";
 import { createDID, resolveDIDFromLog, updateDID } from "../src/method";
 import { mock } from "bun-bagel";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
-import { deriveHash, createDate, clone, deriveNextKeyHash } from "../src/utils";
+import { deriveHash, createDate, clone, deriveNextKeyHash, fetchDIDWitnessesFromIdentifier } from "../src/utils";
 import { createMockDIDLog} from './utils';
 import type { DIDLog, VerificationMethod } from "../src/interfaces";
 
@@ -208,11 +208,11 @@ test("updateKeys MUST be in nextKeyHashes when reading", async () => {
     }
   ]);
   try {
-    await resolveDIDFromLog(mockLog);
+    const {meta} = await resolveDIDFromLog(mockLog);
   } catch(e) {
     err = e;
   }
-
+  
   expect(err).toBeDefined();
   expect(err.message).toContain('Invalid update key');
   delete process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH;
@@ -293,54 +293,29 @@ test("updateDID should not allow moving a non-portable DID", async () => {
 });
 
 test("Create DID with witnesses", async () => {
-  mock("https://example.com/1234/witness", { method: "POST", response: { data: {proof: {
-    type: "DataIntegrityProof",
-    cryptosuite: "eddsa-jcs-2022",
-    verificationMethod: "did:webvh:1234:example.com:1234#key1",
-    created: "2023-06-18T21:19:10Z",
-    proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
-    proofPurpose: "authentication"
-  } } }});
-  mock("https://example.com/5678/witness", { method: "POST", response: { data: {proof: {
-    type: "DataIntegrityProof",
-    cryptosuite: "eddsa-jcs-2022",
-    verificationMethod: "did:webvh:5678:example.com:5678#key1",
-    created: "2023-06-18T21:19:10Z",
-    proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
-    proofPurpose: "authentication"
-  } } }});
+  const witness1 = await generateEd25519VerificationMethod();
+  const witness2 = await generateEd25519VerificationMethod();
   const authKey = await generateEd25519VerificationMethod();
+
   const { did, doc, meta, log } = await createDID({
     domain: 'example.com',
     signer: createSigner(authKey),
     updateKeys: [authKey.publicKeyMultibase!],
     verificationMethods: [authKey],
-    witnesses: ['did:webvh:1234:example.com:1234', 'did:webvh:5678:example.com:5678'],
-    witnessThreshold: 1
+    witness: {witnesses: [
+      {id: `did:key:${witness1.publicKeyMultibase}`, weight: 1},
+      {id: `did:key:${witness2.publicKeyMultibase}`, weight: 1}
+    ], threshold: 2},
   });
 
-  expect(meta.witnesses).toHaveLength(2);
-  expect(meta.witnessThreshold).toBe(1);
-  expect(log[0].proof?.length).toBe(3);
+  expect(meta.witness?.witnesses).toHaveLength(2);
+  expect(meta.witness?.threshold).toBe(2);
+  expect(log[0].proof?.length).toBe(1);
 });
 
 test("Update DID with witnesses", async () => {
-  mock("https://example.com/1234/witness", { method: "POST", response: { data: {proof: {
-    type: "DataIntegrityProof",
-    cryptosuite: "eddsa-jcs-2022",
-    verificationMethod: "did:webvh:1234:example.com:1234#key1",
-    created: "2023-06-18T21:19:10Z",
-    proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
-    proofPurpose: "authentication"
-  } } }});
-  mock("https://example.com/5678/witness", { method: "POST", response: { data: {proof: {
-    type: "DataIntegrityProof",
-    cryptosuite: "eddsa-jcs-2022",
-    verificationMethod: "did:webvh:5678:example.com:5678#key1",
-    created: "2023-06-18T21:19:10Z",
-    proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
-    proofPurpose: "authentication"
-  } } }});
+  const witness1 = await generateEd25519VerificationMethod();
+  const witness2 = await generateEd25519VerificationMethod();
   const authKey = await generateEd25519VerificationMethod();
   const { did, doc, meta, log } = await createDID({
     domain: 'example.com',
@@ -353,11 +328,34 @@ test("Update DID with witnesses", async () => {
     log,
     signer: createSigner(authKey),
     updateKeys: [authKey.publicKeyMultibase!],
-    witnesses: ['did:webvh:1234:example.com:1234', 'did:webvh:5678:example.com:5678'],
-    witnessThreshold: 2
+    witness: {witnesses: [
+      {id: `did:key:${witness1.publicKeyMultibase}`, weight: 1},
+      {id: `did:key:${witness2.publicKeyMultibase}`, weight: 1}
+    ], threshold: 2}
   });
 
-  expect(updatedMeta.witnesses).toHaveLength(2);
-  expect(updatedMeta.witnessThreshold).toBe(2);
-  expect(updatedLog[updatedLog.length - 1].proof?.length).toBe(3); // 1 main proof + 2 witness proofs
+  expect(updatedMeta.witness?.witnesses).toHaveLength(2);
+  expect(updatedMeta.witness?.threshold).toBe(2);
+  expect(updatedLog[updatedLog.length - 1].proof?.length).toBe(1);
+});
+
+test("Resolve DID with witnesses", async () => {
+  const witness1 = await generateEd25519VerificationMethod();
+  const witness2 = await generateEd25519VerificationMethod();
+  const authKey = await generateEd25519VerificationMethod();
+  const { did, doc, meta, log } = await createDID({
+    domain: 'example.com',
+    signer: createSigner(authKey),
+    updateKeys: [authKey.publicKeyMultibase!],
+    verificationMethods: [authKey],
+    witness: {witnesses: [
+      {id: `did:key:${witness1.publicKeyMultibase}`, weight: 1},
+      {id: `did:key:${witness2.publicKeyMultibase}`, weight: 1}
+    ], threshold: 2}
+  });
+
+  const { did: resolvedDid, doc: resolvedDoc, meta: resolvedMeta } = await resolveDIDFromLog(log);
+
+  expect(resolvedMeta.witness?.witnesses).toHaveLength(2);
+  expect(resolvedMeta.witness?.threshold).toBe(2);
 });
