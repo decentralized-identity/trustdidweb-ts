@@ -14,16 +14,3 @@ export function createMockDIDLog(entries: Partial<DIDLogEntry>[]): DIDLog {
     return mockEntry;
   });
 }
-
-export const isWitnessServerRunning = async (url: string) => {
-  try {
-    const response = await fetch(`${url}/health`);
-    if (response.ok) {
-      return true;
-    }
-    return false;
-  } catch (error) {
-    console.error('Witness server is not running');
-    return false;
-  }
-};

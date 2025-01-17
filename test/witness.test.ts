@@ -1,18 +1,10 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { createDID, resolveDIDFromLog, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
-import { isWitnessServerRunning } from "./utils";
 import { DIDLog, VerificationMethod } from "../src/interfaces";
 import { createWitnessProof } from "../src/utils/witness";
 
 describe("Witness Implementation Tests", async () => {
-  const WITNESS_SERVER_URL = "http://localhost:8000";
-  const serverRunning = await isWitnessServerRunning(WITNESS_SERVER_URL);
-  
-  if (!serverRunning) {
-    test.skip("Witness server is not running", () => {});
-    return;
-  }
 
   let authKey: VerificationMethod;
   let witness1: VerificationMethod, witness2: VerificationMethod, witness3: VerificationMethod;

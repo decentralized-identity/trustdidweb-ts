@@ -1,7 +1,6 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { createDID, deactivateDID, resolveDIDFromLog, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
-import { isWitnessServerRunning } from "./utils";
 import type { DIDLog, VerificationMethod } from "../src/interfaces";
 import { createWitnessProof } from "../src/utils/witness";
 
