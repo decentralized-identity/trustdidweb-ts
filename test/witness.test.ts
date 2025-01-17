@@ -2,8 +2,8 @@ import { beforeAll, describe, expect, test } from "bun:test";
 import { createDID, resolveDIDFromLog, updateDID } from "../src/method";
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 import { isWitnessServerRunning } from "./utils";
-import { DIDLog } from "../src/interfaces";
-import { VerificationMethod } from "../src/interfaces";
+import { DIDLog, VerificationMethod } from "../src/interfaces";
+import { createWitnessProof } from "../src/utils/witness";
 
 describe("Witness Implementation Tests", async () => {
   const WITNESS_SERVER_URL = "http://localhost:8000";
@@ -50,29 +50,18 @@ describe("Witness Implementation Tests", async () => {
     const newAuthKey = await generateEd25519VerificationMethod();
     
     // Create witness proofs
-    const witnessProofs = [
-      {
-        versionId: initialDID.log[0].versionId,
-        proof: [
-          {
-            type: "DataIntegrityProof",
-            cryptosuite: "eddsa-jcs-2022",
-            verificationMethod: `did:key:${witness1.publicKeyMultibase}`,
-            created: new Date().toISOString(),
-            proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
-            proofPurpose: "authentication"
-          },
-          {
-            type: "DataIntegrityProof",
-            cryptosuite: "eddsa-jcs-2022",
-            verificationMethod: `did:key:${witness2.publicKeyMultibase}`,
-            created: new Date().toISOString(),
-            proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
-            proofPurpose: "authentication"
-          }
-        ]
-      }
-    ];
+    const versionId = initialDID.log[0].versionId;
+    
+    // Create proofs from witness1 and witness2
+    const proofs = await Promise.all([
+      witness1, 
+      witness2
+    ].map(witness => createWitnessProof(witness, versionId)));
+
+    const witnessProofs = [{
+      versionId,
+      proof: proofs
+    }];
 
     const updatedDID = await updateDID({
       log: initialDID.log,
@@ -118,32 +107,25 @@ describe("Witness Implementation Tests", async () => {
   });
 
   test("Verify witness proofs from did-witness.json", async () => {
+    // Create real witness proofs using the utility
     const mockWitnessFile = [
       {
         versionId: initialDID.log[0].versionId,
         proof: [
-          {
-            type: "DataIntegrityProof",
-            cryptosuite: "eddsa-jcs-2022",
-            verificationMethod: `did:key:${witness1.publicKeyMultibase}`,
-            created: new Date().toISOString(),
-            proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
-            proofPurpose: "authentication"
-          }
+          await createWitnessProof(witness1, initialDID.log[0].versionId)
+        ]
+      },
+      {
+        versionId: initialDID.log[0].versionId,
+        proof: [
+          await createWitnessProof(witness2, initialDID.log[0].versionId)
         ]
       },
       {
         versionId: "future-version-id",
         proof: [
           // This proof should be ignored since version doesn't exist in log
-          {
-            type: "DataIntegrityProof",
-            cryptosuite: "eddsa-jcs-2022",
-            verificationMethod: `did:key:${witness1.publicKeyMultibase}`,
-            created: new Date().toISOString(),
-            proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk...",
-            proofPurpose: "authentication"
-          }
+          await createWitnessProof(witness1, "future-version-id")
         ]
       }
     ];

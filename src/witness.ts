@@ -1,12 +1,11 @@
-import { createSigner } from './cryptography';
 import { canonicalize } from 'json-canonicalize';
-import { createHash } from 'crypto';
-import { resolveDIDFromLog } from './method';
-import { config } from './config';
-import type { DataIntegrityProof, DIDLog, DIDLogEntry, WitnessEntry, WitnessParameter, WitnessProofFileEntry } from './interfaces';
+import { createHash } from './utils/crypto';
+import type { DataIntegrityProof, DIDLogEntry, WitnessEntry, WitnessParameter, WitnessProofFileEntry } from './interfaces';
+import * as ed from '@noble/ed25519';
+import { base58btc } from "multiformats/bases/base58";
+import { resolveVM } from "./utils";
+import { bufferToString, concatBuffers } from './utils/buffer';
 
-// Parse the DID_VERIFICATION_METHODS environment variable
-const verificationMethods = JSON.parse(Buffer.from(process.env.DID_VERIFICATION_METHODS || 'W10=', 'base64').toString('utf8'));
 
 export function validateWitnessParameter(witness: WitnessParameter): void {
   if (!witness.threshold || witness.threshold < 1) {
@@ -43,109 +42,76 @@ export function calculateWitnessWeight(proofs: DataIntegrityProof[], witnesses: 
   return totalWeight;
 }
 
-export function verifyWitnessProofs(
+export async function verifyWitnessProofs(
   logEntry: DIDLogEntry,
   witnessProofs: WitnessProofFileEntry[],
   currentWitness: WitnessParameter
-): void {
-  // Find proofs for this version or later versions
-  const validProofs = witnessProofs.filter(wp => {
-    const [wpVersion] = wp.versionId.split('-');
-    const [entryVersion] = logEntry.versionId.split('-');
-    return parseInt(wpVersion) >= parseInt(entryVersion);
-  });
-
+): Promise<void> {
+  const validProofs = witnessProofs.filter(wp => wp.versionId === logEntry.versionId);
+  
   if (validProofs.length === 0) {
     throw new Error('No valid witness proofs found for version');
   }
 
-  // Get the earliest valid proof set
-  const versionProofs = validProofs[0];
+  let totalWeight = 0;
+  const processedWitnesses = new Set<string>();
 
-  // Verify each proof
-  for (const proof of versionProofs.proof) {
-    if (proof.cryptosuite !== 'eddsa-jcs-2022') {
-      throw new Error('Invalid witness proof cryptosuite');
-    }
-
-    // Verify the proof signature
-    const witness = currentWitness.witnesses.find(w => proof.verificationMethod.startsWith(w.id));
-    if (!witness) {
-      throw new Error('Proof from unauthorized witness');
-    }
-
-    try {
-      // Create input for verification
-      const { proof: _, ...entryWithoutProof } = logEntry;
-      const dataHash = createHash('sha256').update(canonicalize(entryWithoutProof)).digest();
-      const proofHash = createHash('sha256').update(canonicalize({
-        ...proof,
-        proofValue: undefined
-      })).digest();
-      const input = Buffer.concat([proofHash, dataHash]);
-
-      // Verify proof
-      // Note: Implementation of actual signature verification would go here
-      if (proof.proofValue === 'invalid-proof-value') {
-        throw new Error('Invalid witness proof');
+  for (const proofSet of validProofs) {
+    for (const proof of proofSet.proof) {
+      if (proof.cryptosuite !== 'eddsa-jcs-2022') {
+        throw new Error('Invalid witness proof cryptosuite');
       }
-    } catch (error) {
-      throw new Error('Invalid witness proof');
+
+      const witness = currentWitness.witnesses.find(w => proof.verificationMethod.startsWith(w.id));
+      if (!witness) {
+        throw new Error('Proof from unauthorized witness');
+      }
+
+      if (processedWitnesses.has(witness.id)) {
+        continue;
+      }
+
+      try {
+        const vm = await resolveVM(proof.verificationMethod);
+        if (!vm) {
+          throw new Error(`Verification Method ${proof.verificationMethod} not found`);
+        }
+
+        const publicKey = base58btc.decode(vm.publicKeyMultibase!);
+        if (publicKey[0] !== 0xed || publicKey[1] !== 0x01) {
+          throw new Error(`multiKey doesn't include ed25519 header (0xed01)`);
+        }
+
+        const { proofValue, ...proofWithoutValue } = proof;
+        const dataHash = await createHash(canonicalize({versionId: logEntry.versionId}));
+        const proofHash = await createHash(canonicalize(proofWithoutValue));
+        const input = concatBuffers(proofHash, dataHash);
+
+        const signature = base58btc.decode(proofValue);
+        const signatureHex = bufferToString(signature, 'hex');
+        const inputHex = bufferToString(input, 'hex');
+        const publicKeyHex = bufferToString(publicKey.slice(2), 'hex');
+
+        const verified = await ed.verifyAsync(
+          signatureHex,
+          inputHex,
+          publicKeyHex
+        );
+
+        if (!verified) {
+          throw new Error('Invalid witness proof signature');
+        }
+
+        totalWeight += witness.weight;
+        processedWitnesses.add(witness.id);
+
+      } catch (error: any) {
+        throw new Error(`Invalid witness proof: ${error.message}`);
+      }
     }
   }
 
-  // Check if threshold is met
-  const totalWeight = calculateWitnessWeight(versionProofs.proof, currentWitness.witnesses);
   if (totalWeight < currentWitness.threshold) {
-    throw new Error('Witness threshold not met');
-  }
-}
-
-export async function createWitnessProof(log: DIDLog): Promise<{ proof: DataIntegrityProof } | { error: string }> {
-  if (!Array.isArray(log) || log.length < 1) {
-    return { error: 'Invalid log format' };
-  }
-
-  try {
-    const { meta } = await resolveDIDFromLog(log);
-    if (!meta.witness) {
-      return { error: 'No witness configuration found' };
-    }
-
-    // Get verification methods using config helper
-    const verificationMethods = config.getVerificationMethods();
-
-    // Find the corresponding verification method with secret key
-    const fullVM = verificationMethods.find((vm: any) => 
-      meta.witness?.witnesses.some(w => w.id === vm.id.split('#')[0])
-    );
-    
-    if (!fullVM || !fullVM.secretKeyMultibase) {
-      return { error: 'Witness secret key not found' };
-    }
-
-    const logEntry = log[log.length - 1];
-    
-    // Create a signer using the witness verification method
-    const signer = createSigner({
-      type: 'Multikey',
-      id: fullVM.id,
-      controller: fullVM.controller ?? fullVM.id.split('#')[0],
-      publicKeyMultibase: fullVM.publicKeyMultibase,
-      secretKeyMultibase: fullVM.secretKeyMultibase
-    }, false);
-
-    // Only sign the versionId
-    const signedDoc = await signer({ versionId: logEntry.versionId });
-
-    return {
-      proof: {
-        ...signedDoc.proof,
-        proofPurpose: 'authentication'
-      }
-    };
-  } catch (error) {
-    console.error('Error in witness signing:', error);
-    return { error: 'Failed to create witness proof' };
+    throw new Error(`Witness threshold not met: got ${totalWeight}, need ${currentWitness.threshold}`);
   }
 }

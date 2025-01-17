@@ -209,11 +209,10 @@ test("updateKeys MUST be in nextKeyHashes when reading", async () => {
   ]);
   try {
     const {meta} = await resolveDIDFromLog(mockLog);
-    console.log(meta);
   } catch(e) {
     err = e;
   }
-  console.log(err);
+  
   expect(err).toBeDefined();
   expect(err.message).toContain('Invalid update key');
   delete process.env.IGNORE_ASSERTION_SCID_IS_FROM_HASH;

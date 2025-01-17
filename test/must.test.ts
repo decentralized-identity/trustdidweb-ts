@@ -3,6 +3,7 @@ import { createDID, deactivateDID, resolveDIDFromLog, updateDID } from "../src/m
 import { createSigner, generateEd25519VerificationMethod } from "../src/cryptography";
 import { isWitnessServerRunning } from "./utils";
 import type { DIDLog, VerificationMethod } from "../src/interfaces";
+import { createWitnessProof } from "../src/utils/witness";
 
 describe("did:webvh normative tests", async () => {
   let newDoc1: any;
@@ -71,32 +72,21 @@ describe("did:webvh normative tests", async () => {
 });
 
 describe("did:webvh normative witness tests", async () => {
-  const WITNESS_SERVER_URL = "http://localhost:8000";
-  const serverRunning = await isWitnessServerRunning(WITNESS_SERVER_URL);
-  console.log("serverRunning", serverRunning);
-  if (!serverRunning) {
-    describe("Witness functionality", () => {
-      test.skip("Witness server is not running", () => {});
-    });
-    return;
-  }
-
   let authKey1: VerificationMethod;
-  let witness1DID: string, witness2DID: string, witness3DID: string;
+  let witness1: VerificationMethod, witness2: VerificationMethod, witness3: VerificationMethod;
   let initialDID: { did: string; doc: any; meta: any; log: DIDLog };
 
   beforeAll(async () => {
     authKey1 = await generateEd25519VerificationMethod();
-    // Create witness DIDs (should be did:key format)
-    witness1DID = "did:key:z6MkrBXGwmSFjaqxQeqMMXU6BWwrgPW2BkFXv15HSJ4UijKX";
-    witness2DID = "did:key:z6MkrBXGwmSFjaqxQeqMMXU6BWwrgPW2BkFXv15HSJ4UijKY";
-    witness3DID = "did:key:z6MkrBXGwmSFjaqxQeqMMXU6BWwrgPW2BkFXv15HSJ4UijKZ";
+    witness1 = await generateEd25519VerificationMethod();
+    witness2 = await generateEd25519VerificationMethod();
+    witness3 = await generateEd25519VerificationMethod();
   });
 
   test("witness parameter MUST use did:key DIDs", async () => {
     let err;
     try {
-      await createDID({
+      const {doc, log, did} = await createDID({
         domain: 'example.com',
         signer: createSigner(authKey1),
         updateKeys: [authKey1.publicKeyMultibase!],
@@ -105,7 +95,7 @@ describe("did:webvh normative witness tests", async () => {
           threshold: 2,
           witnesses: [
             { id: "did:web:example.com", weight: 1 }, // Invalid - not did:key
-            { id: witness1DID, weight: 1 }
+            { id: `did:key:${witness1.publicKeyMultibase}`, weight: 1 }
           ]
         }
       });
@@ -126,9 +116,9 @@ describe("did:webvh normative witness tests", async () => {
       witness: {
         threshold: 2,
         witnesses: [
-          { id: witness1DID, weight: 1 },
-          { id: witness2DID, weight: 1 },
-          { id: witness3DID, weight: 1 }
+          { id: `did:key:${witness1.publicKeyMultibase}`, weight: 1 },
+          { id: `did:key:${witness2.publicKeyMultibase}`, weight: 1 },
+          { id: `did:key:${witness3.publicKeyMultibase}`, weight: 1 }
         ]
       }
     });
@@ -138,13 +128,7 @@ describe("did:webvh normative witness tests", async () => {
       {
         versionId: initialDID.log[0].versionId,
         proof: [
-          // Only one witness proof - should fail threshold
-          {
-            type: "DataIntegrityProof",
-            cryptosuite: "eddsa-jcs-2022",
-            verificationMethod: witness1DID,
-            proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk..."
-          }
+          await createWitnessProof(witness1, initialDID.log[0].versionId)
         ]
       }
     ];
@@ -164,12 +148,8 @@ describe("did:webvh normative witness tests", async () => {
       {
         versionId: initialDID.log[0].versionId,
         proof: [
-          {
-            type: "DataIntegrityProof",
-            cryptosuite: "invalid-suite", // Invalid cryptosuite
-            verificationMethod: witness1DID,
-            proofValue: "z58xkL6dbDRJjFVkBxhNHXNHFnZzZk..."
-          }
+          {...(await createWitnessProof(witness1, initialDID.log[0].versionId)), cryptosuite: 'invalid-suite'},
+          await createWitnessProof(witness2, initialDID.log[0].versionId)
         ]
       }
     ];
@@ -192,7 +172,7 @@ describe("did:webvh normative witness tests", async () => {
           {
             type: "DataIntegrityProof",
             cryptosuite: "eddsa-jcs-2022",
-            verificationMethod: witness1DID,
+            verificationMethod: `did:key:${witness1.publicKeyMultibase}#${witness1.publicKeyMultibase}`,
             proofValue: "invalid-proof-value" // Invalid proof value
           }
         ]

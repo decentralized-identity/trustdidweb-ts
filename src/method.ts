@@ -1,11 +1,16 @@
 import { clone, createDate, createDIDDoc, createSCID, deriveHash, fetchLogFromIdentifier, findVerificationMethod, getActiveDIDs, getBaseUrl, normalizeVMs } from "./utils";
 import { BASE_CONTEXT, METHOD, PLACEHOLDER, PROTOCOL } from './constants';
 import { documentStateIsValid, hashChainValid, newKeysAreInNextKeys, scidIsFromHash } from './assertions';
-import type { CreateDIDInterface, DIDResolutionMeta, DIDLogEntry, DIDLog, UpdateDIDInterface, DeactivateDIDInterface, ResolutionOptions } from './interfaces';
+import type { CreateDIDInterface, DIDResolutionMeta, DIDLogEntry, DIDLog, UpdateDIDInterface, DeactivateDIDInterface, ResolutionOptions, WitnessProofFileEntry } from './interfaces';
+import { verifyWitnessProofs, validateWitnessParameter } from './witness';
 
 export const createDID = async (options: CreateDIDInterface): Promise<{did: string, doc: any, meta: DIDResolutionMeta, log: DIDLog}> => {
   if (!options.updateKeys) {
     throw new Error('Update keys not supplied')
+  }
+  
+  if (options.witness && options.witness.witnesses.length > 0) {
+    validateWitnessParameter(options.witness);
   }
   
   const controller = `did:${METHOD}:${PLACEHOLDER}:${options.domain}`;
@@ -39,6 +44,11 @@ export const createDID = async (options: CreateDIDInterface): Promise<{did: stri
   const signedDoc = await options.signer(prelimEntry);
   let allProofs = [signedDoc.proof];
   prelimEntry.proof = allProofs;
+
+  const verified = await documentStateIsValid({...prelimEntry, versionId: `1-${logEntryHash2}`, proof: prelimEntry.proof}, params.updateKeys, params.witness);
+  if (!verified) {
+    throw new Error(`version ${prelimEntry.versionId} is invalid.`)
+  }
 
   return {
     did: prelimEntry.state.id!,
@@ -119,7 +129,6 @@ export const resolveDIDFromLog = async (log: DIDLog, options: ResolutionOptions 
       meta.updateKeys = parameters.updateKeys;
       meta.nextKeyHashes = parameters.nextKeyHashes || [];
       meta.prerotation = meta.nextKeyHashes.length > 0;
-      meta.prerotation = parameters.prerotation === true;
       meta.witness = parameters.witness || meta.witness;
       meta.nextKeyHashes = parameters.nextKeyHashes ?? [];
       const logEntry = {
@@ -147,7 +156,6 @@ export const resolveDIDFromLog = async (log: DIDLog, options: ResolutionOptions 
       } else if (newHost !== host) {
         host = newHost;
       }
-
       const keys = meta.prerotation ? parameters.updateKeys : meta.updateKeys;
       const verified = await documentStateIsValid(resolutionLog[i], keys, meta.witness);
       if (!verified) {
@@ -223,6 +231,16 @@ export const resolveDIDFromLog = async (log: DIDLog, options: ResolutionOptions 
         return {did, doc, meta};
       }
     }
+
+    // If there's a witness configuration and witness proofs are provided
+    if (parameters.witness && options.witnessProofs) {
+      await verifyWitnessProofs(
+        resolutionLog[i],
+        options.witnessProofs,
+        parameters.witness
+      );
+    }
+
     i++;
   }
   if (options.versionTime || options.versionId || options.verificationMethod) {
@@ -289,6 +307,11 @@ export const updateDID = async (options: UpdateDIDInterface): Promise<{did: stri
     prerotation: (nextKeyHashes?.length ?? 0) > 0,
     ...params
   };
+
+  // Add witness parameter validation
+  if (options.witness && options.witness.witnesses.length > 0) {
+    validateWitnessParameter(options.witness);
+  }
 
   return {
     did,

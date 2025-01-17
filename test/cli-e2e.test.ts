@@ -295,12 +295,13 @@ describe("Witness CLI End-to-End Tests", async () => {
       // Parse the witness DID log
       const witnessLogStr = witnessProc.stdout.toString();
       
-      // Parse the witness log and get the DID from the state
-      const witnessLog = readLogFromString(witnessLogStr);
-      const witnessDID = witnessLog[0].state.id;
+      // Parse the witness log and get the verification key from the state
+      const [witnessLogEntry, ...rest] = readLogFromString(witnessLogStr);
+      const witnessKey = witnessLogEntry?.state?.verificationMethod?.[0]?.id?.split('#')[1];
+      const witnessDIDKey = `did:key:${witnessKey}`;
       
       // Run the CLI create command with witness
-      const proc = await $`bun run cli create --domain localhost:8000 --output ${witnessLogFile} --witness ${witnessDID} --witness-threshold 1`.quiet();
+      const proc = await $`bun run cli create --domain localhost:8000 --output ${witnessLogFile} --witness ${witnessDIDKey} --witness-threshold 1`.quiet();
 
       expect(proc.exitCode).toBe(0);
       
@@ -313,7 +314,7 @@ describe("Witness CLI End-to-End Tests", async () => {
       }
       
       expect(log[0].parameters.witness?.witnesses).toHaveLength(1);
-      expect(log[0].parameters.witness.witnesses[0].id).toBe(witnessDID!);
+      expect(log[0].parameters.witness.witnesses[0].id).toBe(witnessDIDKey);
       expect(log[0].parameters.witness.threshold).toBe(1);
       expect(log[0].proof).toHaveLength(1); // Controller proof + witness proof
     } catch (error) {

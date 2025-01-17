@@ -6,6 +6,7 @@ import { createHash } from './utils/crypto';
 import { config } from './config';
 import { bufferToString, concatBuffers } from './utils/buffer';
 import { WitnessParameter } from './interfaces';
+import { validateWitnessParameter } from './witness';
 
 const isKeyAuthorized = (verificationMethod: string, updateKeys: string[]): boolean => {
   if (config.getEnvValue('IGNORE_ASSERTION_KEY_IS_AUTHORIZED') === 'true') return true;
@@ -34,6 +35,10 @@ const isWitnessAuthorized = (verificationMethod: string, witnesses: string[]): b
   let {proof: proofs, ...rest} = doc;
   if (!Array.isArray(proofs)) {
     proofs = [proofs];
+  }
+
+  if (witness && witness.witnesses.length > 0) {
+    validateWitnessParameter(witness);
   }
 
   for (let i = 0; i < proofs.length; i++) {

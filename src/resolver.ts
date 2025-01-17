@@ -1,5 +1,4 @@
 import { Elysia } from 'elysia'
-import { createWitnessProof } from './witness';
 import { config } from './config';
 import { resolveDID } from './method';
 import { DIDDoc } from './interfaces';
@@ -21,44 +20,32 @@ export const getFile = async ({
       let serviceEndpoint;
       
       if (file === 'whois') {
-        // Find the #whois service in the DID Document
         const whoisService = didDocument?.service?.find(
           (s: any) => s.id === '#whois'
         );
-        console.log(whoisService);
         
         if (whoisService?.serviceEndpoint) {
           serviceEndpoint = whoisService.serviceEndpoint;
         }
-        console.log('serviceEndpoint', serviceEndpoint);
       } else {
-        // Find the #files service in the DID Document
         const filesService = didDocument?.service?.find(
           (s: any) => s.id === '#files'
         );
         
         if (filesService?.serviceEndpoint) {
-          // Use explicit #files service if defined
           serviceEndpoint = filesService.serviceEndpoint;
         }
       }
 
       if (!serviceEndpoint) {
-        // Use implicit service endpoint as fallback
-        // Remove .well-known/ if present in the domain
         const cleanDomain = path.replace('.well-known/', '');
         serviceEndpoint = `https://${cleanDomain}`;
         
-        // For whois, use the .vp extension
         if (file === 'whois') {
           serviceEndpoint = `${serviceEndpoint}/whois.vp`;
         }
       }
-
-      // Ensure serviceEndpoint doesn't end with slash
       serviceEndpoint = serviceEndpoint.replace(/\/$/, '');
-      
-      // Append the path to serviceEndpoint for files service
       const url = file === 'whois' ? serviceEndpoint : `${serviceEndpoint}/${file}`;
       
       const response = await fetch(url);
@@ -144,19 +131,6 @@ const app = new Elysia()
       },
       isRemote: false
     });
-  })
-  .post('/witness', async ({body}) => {
-    try {
-      const result = await createWitnessProof((body as any).log);
-      if ('error' in result) {
-        throw new Error(result.error);
-      }
-      console.log(`Signed with VM`, (result as any).proof.verificationMethod)
-      return { proof: result.proof };
-    } catch (error) {
-      console.error('Error creating witness proof:', error);
-      return new Response(JSON.stringify({ error }), { status: 400 });
-    }
   })
 
 const port = config.getEnvValue('PORT') || 8000;
